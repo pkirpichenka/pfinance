@@ -416,7 +416,7 @@ const Store={
 };
 
 /* =========================================================
-   ДАННЫЕ ПО УМОЛЧАНИЮ (демо, чтобы прототип был наглядным)
+   ДАННЫЕ ПО УМОЛЧАНИЮ (чистая база в BYN)
    ========================================================= */
 const uid=()=>Math.random().toString(36).slice(2,9);
 const TODAY=()=>new Date().toISOString().slice(0,10);
@@ -424,86 +424,64 @@ function daysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return d.toISOSt
 function daysAhead(n){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
 
 function seed(){
-  const biz=[
-    {id:"b1",name:"Студия растяжки №1",emoji:"🤸",opening:40000},
-    {id:"b2",name:"Студия растяжки №2",emoji:"🧘",opening:25000},
-    {id:"b3",name:"Студия растяжки №3",emoji:"💪",opening:18000},
-    {id:"b4",name:"Кофейный аппарат",emoji:"☕",opening:9000},
-    {id:"b5",name:"Снековый аппарат",emoji:"🍫",opening:6000},
-  ];
   const catIncome=["Зарплата / основной доход","Подработка","Подарки","Проценты по вкладу","Прочее"];
   const catExpense=["Продукты","Кафе и рестораны","Транспорт","Аренда жилья","Коммуналка","Здоровье","Одежда","Развлечения","Путешествия","Прочее"];
   const catBizIn=["Выручка","Прочий доход бизнеса"];
   const catBizOut=["ЗП тренерам","ЗП администраторам","Аренда помещения","Закупка товара","Обслуживание аппарата","Реклама","Ремонт / инвентарь","Прочее"];
 
-  // Валюты (base = RUB). rate = сколько базовой валюты стоит 1 единица
+  // Базовая валюта — белорусский рубль. Курсы обновляются из API Национального банка РБ.
+  // rate = сколько единиц базовой валюты стоит 1 единица валюты.
   const currencies=[
-    {code:"RUB",symbol:"₽",rate:1},
-    {code:"USD",symbol:"$",rate:92},
-    {code:"EUR",symbol:"€",rate:100},
-  ];
-  // Счета: карты, кредитка/овердрафт (limit), наличные в разных валютах
-  const accounts=[
-    {id:"a1",name:"Тинькофф Black",kind:"card",currency:"RUB",opening:85000,limit:0,emoji:"💳"},
-    {id:"a2",name:"Сбербанк",kind:"card",currency:"RUB",opening:42000,limit:0,emoji:"💳"},
-    {id:"a3",name:"Альфа кредитка",kind:"credit",currency:"RUB",opening:-31000,limit:150000,emoji:"💳"},
-    {id:"a4",name:"Наличные ₽",kind:"cash",currency:"RUB",opening:23000,limit:0,emoji:"💵"},
-    {id:"a5",name:"Наличные $",kind:"cash",currency:"USD",opening:1200,limit:0,emoji:"💵"},
-    {id:"a6",name:"Наличные €",kind:"cash",currency:"EUR",opening:600,limit:0,emoji:"💵"},
-  ];
-
-  const tx=[
-    // личные доходы/расходы (account — на какой счёт/с какого счёта)
-    {id:uid(),type:"in",account:"a1",amount:120000,cat:"Зарплата / основной доход",date:daysAgo(28),note:"Основной доход"},
-    {id:uid(),type:"out",account:"a1",amount:31000,cat:"Аренда жилья",date:daysAgo(27),note:""},
-    {id:uid(),type:"out",account:"a1",amount:14200,cat:"Продукты",date:daysAgo(24),note:""},
-    {id:uid(),type:"out",account:"a4",amount:5400,cat:"Кафе и рестораны",date:daysAgo(20),note:"Наличными"},
-    {id:uid(),type:"out",account:"a2",amount:8900,cat:"Транспорт",date:daysAgo(18),note:"Бензин, такси"},
-    {id:uid(),type:"in",account:"a1",amount:120000,cat:"Зарплата / основной доход",date:daysAgo(2),note:""},
-    {id:uid(),type:"out",account:"a3",amount:12600,cat:"Продукты",date:daysAgo(3),note:"С кредитки"},
-    {id:uid(),type:"out",account:"a5",amount:60,cat:"Кафе и рестораны",date:daysAgo(6),note:"Поездка, USD"},
-    // Бизнес: выручка приходит на счёт бизнеса
-    {id:uid(),type:"biz_income",biz:"b1",amount:210000,cat:"Выручка",date:daysAgo(26),note:"Абонементы"},
-    {id:uid(),type:"biz_income",biz:"b2",amount:145000,cat:"Выручка",date:daysAgo(25),note:""},
-    {id:uid(),type:"biz_income",biz:"b3",amount:98000,cat:"Выручка",date:daysAgo(25),note:""},
-    {id:uid(),type:"biz_income",biz:"b4",amount:32000,cat:"Выручка",date:daysAgo(22),note:"Кофе"},
-    {id:uid(),type:"biz_income",biz:"b5",amount:19000,cat:"Выручка",date:daysAgo(22),note:"Снеки"},
-    // Расходы бизнеса напрямую со счёта бизнеса
-    {id:uid(),type:"biz_expense",biz:"b1",amount:40000,cat:"Аренда помещения",date:daysAgo(20),note:""},
-    {id:uid(),type:"biz_expense",biz:"b4",amount:8000,cat:"Обслуживание аппарата",date:daysAgo(15),note:"Закупка зёрен"},
-    // ВЫВОД денег из бизнеса на личную карту/наличные (не доход!)
-    {id:uid(),type:"draw",biz:"b1",account:"a1",amount:90000,cat:"Вывод на карту",date:daysAgo(19),note:"На Тинькофф"},
-    {id:uid(),type:"draw",biz:"b2",account:"a1",amount:60000,cat:"Вывод на карту",date:daysAgo(18),note:""},
-    {id:uid(),type:"draw",biz:"b3",account:"a4",amount:35000,cat:"Вывод наличными",date:daysAgo(17),note:""},
-    // ВОЗВРАТ части денег в бизнес (ЗП, закупки) — не личный расход!
-    {id:uid(),type:"contribution",biz:"b1",account:"a1",amount:38000,cat:"ЗП тренерам",date:daysAgo(14),note:"Вернул на зарплаты"},
-    {id:uid(),type:"contribution",biz:"b2",account:"a1",amount:22000,cat:"ЗП администраторам",date:daysAgo(13),note:""},
-    {id:uid(),type:"contribution",biz:"b3",account:"a4",amount:12000,cat:"Закупка товара",date:daysAgo(10),note:"Коврики, форма"},
-    {id:uid(),type:"draw",biz:"b4",account:"a4",amount:15000,cat:"Вывод наличными",date:daysAgo(8),note:""},
-  ];
-
-  const debts=[
-    {id:uid(),dir:"in",who:"Артём (партнёр)",amount:150000,date:daysAgo(40),due:daysAhead(12),note:"Одолжил на ремонт студии №3",repaid:[{amount:50000,date:daysAgo(5)}]},
-    {id:uid(),dir:"in",who:"Марина",amount:25000,date:daysAgo(20),due:daysAhead(30),note:"",repaid:[]},
-    {id:uid(),dir:"out",who:"Банк — кредит на аппараты",amount:220000,date:daysAgo(120),due:daysAhead(20),note:"Ежемесячный платёж ~18 000",repaid:[{amount:36000,date:daysAgo(10)}]},
-    {id:uid(),dir:"out",who:"Отец",amount:80000,date:daysAgo(60),due:daysAhead(55),note:"Без процентов",repaid:[]},
-  ];
-
-  const goals=[
-    {id:uid(),name:"Подушка безопасности",target:600000,saved:180000,due:daysAhead(300),note:"6 месяцев расходов"},
-    {id:uid(),name:"Открытие студии №4",target:1200000,saved:340000,due:daysAhead(420),note:"Аренда + ремонт + оборудование"},
-    {id:uid(),name:"Отпуск",target:250000,saved:95000,due:daysAhead(150),note:""},
+    {code:"BYN",symbol:"Br",rate:1},
+    {code:"USD",symbol:"$",rate:2.8853},
+    {code:"EUR",symbol:"€",rate:3.2928},
+    {code:"RUB",symbol:"₽",rate:0.036854},
   ];
 
   return {
-    settings:{baseCurrency:"RUB",reminderTime:"20:00",notify:false},
-    currencies, accounts,
-    businesses:biz,
+    settings:{baseCurrency:"BYN",reminderTime:"20:00",notify:false},
+    currencies,
+    accounts:[],
+    businesses:[],
     categories:{in:catIncome,out:catExpense,bizIn:catBizIn,bizOut:catBizOut},
-    tx, debts, goals,
+    tx:[], debts:[], goals:[],
     meta:{lastEntryDate:null,lastNotifiedDate:null,created:TODAY()},
     ui:{view:"overview",txFilter:"all",txPeriod:"all"}
   };
+}
+
+/* =========================================================
+   КУРСЫ НАЦИОНАЛЬНОГО БАНКА РБ
+   ========================================================= */
+async function updateRatesFromNBRB(){
+  try{
+    const r=await fetch("https://api.nbrb.by/exrates/rates?periodicity=0",{cache:"no-store"});
+    if(!r.ok)throw new Error("NBRB HTTP "+r.status);
+    const rows=await r.json();
+    const bynPerUnit={BYN:1};
+    for(const row of rows){
+      const code=String(row.Cur_Abbreviation||"").toUpperCase();
+      const scale=Number(row.Cur_Scale)||1;
+      const official=Number(row.Cur_OfficialRate);
+      if(code&&Number.isFinite(official)&&official>0)bynPerUnit[code]=official/scale;
+    }
+    const base=baseCode();
+    const baseRate=bynPerUnit[base];
+    if(!baseRate)throw new Error("Базовая валюта отсутствует в курсах НБРБ");
+    let changed=false;
+    for(const c of S.currencies||[]){
+      const n=bynPerUnit[c.code];
+      if(!n)continue;
+      const next=c.code===base?1:n/baseRate;
+      if(Math.abs((Number(c.rate)||0)-next)>1e-12){c.rate=next;changed=true;}
+    }
+    const bc=curObj(base);if(bc)bc.rate=1;
+    if(changed)persist();
+    return true;
+  }catch(e){
+    console.warn("Не удалось обновить курсы НБРБ:",e);
+    return false;
+  }
 }
 
 /* =========================================================
@@ -675,11 +653,11 @@ function render(){
     '</nav>';
 
   app.innerHTML=
-  '<div class="mobile-top"><div class="mark">₽</div><div class="ttl">'+esc(curTitle)+'</div><div class="spacer"></div>'+
+  '<div class="mobile-top"><div class="mark">'+esc(sym(baseCode()))+'</div><div class="ttl">'+esc(curTitle)+'</div><div class="spacer"></div>'+
     '<button class="top-add" data-act="nav" data-v="add">'+svg(I.add)+'Внести</button></div>'+
   '<div class="app">'+
     '<aside class="nav">'+
-      '<div class="brand"><div class="mark">₽</div><div><b>Финансы</b><small>личный контроль</small></div></div>'+
+      '<div class="brand"><div class="mark">'+esc(sym(baseCode()))+'</div><div><b>Финансы</b><small>личный контроль</small></div></div>'+
       nav+
       '<div class="nav-sep"></div>'+
       '<button class="nav-item" data-act="nav" data-v="add">'+svg(I.add)+'<span>Быстрая запись</span></button>'+
@@ -1024,6 +1002,7 @@ function viewBusiness(){
         '<div class="avatar" style="background:var(--biz-bg);font-size:18px">'+b.emoji+'</div>'+
         '<div style="flex:1"><div style="font-weight:600;font-family:var(--disp)">'+esc(b.name)+'</div>'+
         '<div class="fs12 muted">на счёте: <b class="mono">'+fmt(s.balance)+'</b></div></div>'+
+        '<button class="x-btn" data-act="edit-biz" data-id="'+b.id+'" title="Изменить">'+svg(I.edit)+'</button>'+
         '<button class="x-btn" data-act="del-biz" data-id="'+b.id+'" title="Удалить">'+svg(I.trash)+'</button>'+
       '</div>'+
       '<div class="kpi-line"><span class="muted">Выручка</span><b class="pos">'+fmt(s.income,true)+'</b></div>'+
@@ -1148,7 +1127,7 @@ function viewSettings(){
         '</select></div>'+
         '<div class="divider"></div>'+
         curRows+
-        '<div class="fs12 muted" style="margin:8px 0 12px">Курс — сколько единиц базовой валюты стоит 1 единица валюты. Меняются вручную (при желании обновляйте раз в период).</div>'+
+        '<div class="fs12 muted" style="margin:8px 0 12px">Курс — сколько единиц базовой валюты стоит 1 единица валюты. При запуске курсы автоматически обновляются по официальным данным Национального банка Республики Беларусь; ручное значение остаётся резервным на случай отсутствия связи.</div>'+
         '<div class="row3" style="grid-template-columns:1fr 1fr 1.4fr"><input class="inp" id="cur-code" placeholder="Код (GBP)" maxlength="4"><input class="inp" id="cur-sym" placeholder="Символ (£)" maxlength="3"><input class="inp mono" id="cur-rate" type="number" step="0.01" placeholder="Курс к базовой"></div>'+
         '<button class="btn sm" style="margin-top:10px" data-act="add-cur">Добавить валюту</button> '+
         '<button class="btn primary sm" style="margin-top:10px" data-act="save-base">Сохранить базовую валюту</button>'+
@@ -1188,7 +1167,7 @@ function viewSettings(){
       '<button class="btn danger" data-act="reset">Начать с чистого листа</button>'+
       '<button class="btn" data-act="logout">Выйти</button>'+
     '</div>'+
-    '<div class="fs12 muted" style="margin-top:10px">Сейчас в базе демо-данные (3 студии, кофейный и снековый аппараты) — чтобы вы сразу увидели, как всё работает. Нажмите «Начать с чистого листа», когда будете готовы вести реальный учёт.</div>'+
+    '<div class="fs12 muted" style="margin-top:10px">База подготовлена для реального учёта без демо-операций. Резервную копию можно скачать или восстановить из JSON.</div>'+
   '</div></div>';
 }
 
@@ -1274,6 +1253,15 @@ function openSheet(title,bodyHtml){
 }
 function mval(id){const e=document.getElementById(id);return e?e.value:"";}
 
+function bizForm(b){
+  const isEdit=!!b;
+  const current=isEdit?bizBalance(b.id):0;
+  b=b||{name:"",emoji:"🏢"};
+  return '<div class="row2"><div class="field"><label>Название</label><input class="inp" id="b-name" value="'+esc(b.name||"")+'" placeholder="Студия растяжки №1"></div>'+ 
+    '<div class="field"><label>Эмодзи</label><input class="inp" id="b-emoji" value="'+esc(b.emoji||"🏢")+'" maxlength="2"></div></div>'+ 
+    '<div class="field"><label>Текущий баланс на счёте</label><input class="inp mono" id="b-open" type="number" step="0.01" value="'+current+'"><div class="hint">При сохранении стартовый баланс будет скорректирован так, чтобы итог точки совпал с указанной суммой.</div></div>';
+}
+
 function accForm(a){
   a=a||{name:"",emoji:"💳",kind:"card",currency:baseCode(),opening:0,limit:0};
   const kinds=[["card","Карта"],["credit","Кредитка / овердрафт"],["cash","Наличные"]];
@@ -1358,11 +1346,15 @@ document.addEventListener("click",e=>{
     return;}
 
   // business
-  if(act==="add-biz"){openModal("Новая точка бизнеса",
-    '<div class="row2"><div class="field"><label>Название</label><input class="inp" id="b-name" placeholder="Студия растяжки №4"></div>'+
-    '<div class="field"><label>Эмодзи</label><input class="inp" id="b-emoji" value="🏢" maxlength="2"></div></div>'+
-    '<div class="field"><label>Стартовый баланс на счёте</label><input class="inp mono" id="b-open" type="number" value="0"></div>',
-    ()=>{const n=mval("b-name").trim();if(!n){toast("Введите название");return false;}S.businesses.push({id:uid(),name:n,emoji:mval("b-emoji")||"🏢",opening:+mval("b-open")||0});persist();render();toast("Точка добавлена");});
+  if(act==="add-biz"){openModal("Новая точка бизнеса",bizForm(),()=>{
+    const n=mval("b-name").trim();if(!n){toast("Введите название");return false;}
+    S.businesses.push({id:uid(),name:n,emoji:mval("b-emoji")||"🏢",opening:+mval("b-open")||0});persist();render();toast("Точка добавлена");});
+    return;}
+  if(act==="edit-biz"){const b=bizById(el.dataset.id);const before=bizBalance(b.id);openModal("Изменить точку",bizForm(b),()=>{
+    const n=mval("b-name").trim();if(!n){toast("Введите название");return false;}
+    const wanted=+mval("b-open")||0;
+    b.name=n;b.emoji=mval("b-emoji")||"🏢";b.opening=(Number(b.opening)||0)+(wanted-before);
+    persist();render();toast("Сохранено");});
     return;}
   if(act==="del-biz"){if(S.tx.some(t=>t.biz===el.dataset.id)){toast("По этой точке есть операции — сначала удалите их");return;}S.businesses=S.businesses.filter(b=>b.id!==el.dataset.id);persist();render();toast("Точка удалена");return;}
 
@@ -1387,7 +1379,7 @@ document.addEventListener("click",e=>{
     if(c.code===baseCode()){toast("Нельзя удалить базовую валюту");return;}
     if(S.accounts.some(a=>a.currency===c.code)){toast("Есть счета в этой валюте — сначала измените их");return;}
     S.currencies.splice(+el.dataset.i,1);persist();render();return;}
-  if(act==="save-base"){const nb=mval("s-base");if(nb){S.settings.baseCurrency=nb;const bc=curObj(nb);if(bc)bc.rate=1;}persist();render();toast("Базовая валюта обновлена");return;}
+  if(act==="save-base"){const nb=mval("s-base");if(nb){S.settings.baseCurrency=nb;const bc=curObj(nb);if(bc)bc.rate=1;}persist();render();toast("Базовая валюта обновлена");updateRatesFromNBRB().then(ok=>{if(ok){render();toast("Курсы НБРБ обновлены");}});return;}
 
   // goals
   if(act==="add-goal"){openModal("Новая цель",goalForm(),()=>{
@@ -1411,7 +1403,7 @@ document.addEventListener("click",e=>{
     persist();render();toast("Напоминание настроено");return;}
   if(act==="export"){downloadJSON();return;}
   if(act==="import"){importJSON();return;}
-  if(act==="reset"){openModal("Начать с чистого листа?",'<p style="margin:0;color:var(--ink-2)">Все демо-операции, долги и цели будут удалены. Балансы счетов обнулятся. Можно оставить структуру — счета, точки бизнеса, валюты и категории.</p><label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13.5px"><input type="checkbox" id="keep-biz" checked> Оставить счета, точки бизнеса, валюты и категории</label>',
+  if(act==="reset"){openModal("Начать с чистого листа?",'<p style="margin:0;color:var(--ink-2)">Все операции, долги и цели будут удалены. Балансы счетов обнулятся. Можно оставить структуру — счета, точки бизнеса, валюты и категории.</p><label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13.5px"><input type="checkbox" id="keep-biz" checked> Оставить счета, точки бизнеса, валюты и категории</label>',
     ()=>{const keep=document.getElementById("keep-biz").checked;const fresh=seed();
       if(keep){S={...fresh,settings:S.settings,currencies:S.currencies,accounts:S.accounts.map(a=>({...a,opening:0})),businesses:S.businesses.map(b=>({...b,opening:0})),categories:S.categories,tx:[],debts:[],goals:[],meta:{lastEntryDate:null,lastNotifiedDate:null,created:TODAY()}};}
       else {S={...fresh,accounts:fresh.accounts.map(a=>({...a,opening:0})),businesses:fresh.businesses.map(b=>({...b,opening:0})),tx:[],debts:[],goals:[]};}
@@ -1487,7 +1479,7 @@ function renderLogin(){
   const app=document.getElementById("app");
   app.innerHTML='<div style="min-height:100vh;display:grid;place-items:center;padding:20px">'+
     '<div class="card pad" style="width:100%;max-width:420px">'+
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px"><div class="brand" style="padding:0"><div class="mark">₽</div><div><b>Финансы</b><small>личный контроль</small></div></div></div>'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px"><div class="brand" style="padding:0"><div class="mark">Br</div><div><b>Финансы</b><small>личный контроль</small></div></div></div>'+
       '<h1 style="font-size:23px;margin-bottom:5px">Вход по email</h1>'+
       '<p class="muted" style="margin:0 0 18px">Введите email — мы отправим ссылку для входа.</p>'+
       '<div class="field"><label>Email</label><input class="inp" id="login-email" type="email" autocomplete="email" placeholder="name@example.com"></div>'+
@@ -1528,6 +1520,11 @@ async function init(){
   const saved=await Store.load();
   if(run!==initRun)return;
   S=saved||seed();
+  // Однократный переход с прежней RUB-демо-базы: полностью очищаем данные и начинаем в BYN.
+  if(saved&&((S.settings&&S.settings.baseCurrency)!=="BYN"||!(S.currencies||[]).some(c=>c.code==="BYN"))){
+    S=seed();
+    persist();
+  }
   // миграция: старый единый список categories.biz -> bizIn / bizOut
   if(S.categories && (!S.categories.bizIn || !S.categories.bizOut)){
     const old=S.categories.biz||[];
@@ -1556,6 +1553,7 @@ async function init(){
   if(!saved)persist();
   render();
   if(S.ui.view==="add")setTimeout(refreshAddForm,0);
+  updateRatesFromNBRB().then(ok=>{if(ok&&S){render();if(S.ui.view==="add")setTimeout(refreshAddForm,0);}});
 }
 init();
 </script>
