@@ -153,6 +153,7 @@ tbody tr:hover{background:var(--surface-2)}
 .chip.c-contribution{background:#EEF1F4;color:var(--ink-2)}
 .chip.c-biz_income{background:var(--personal-bg);color:var(--personal)}
 .chip.c-biz_expense{background:var(--liab-bg);color:var(--liab)}
+.chip.c-adjustment{background:var(--surface-3);color:var(--ink-2)}
 .tag-cat{background:var(--surface-3);color:var(--ink-2);padding:2px 8px;border-radius:6px;font-size:12px}
 
 /* ---------- Forms ---------- */
@@ -501,7 +502,7 @@ function persist(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>Store.save
    ВЫЧИСЛЕНИЯ
    ========================================================= */
 /* --- Валюты --- */
-function baseCode(){return (S.settings&&S.settings.baseCurrency)||"RUB";}
+function baseCode(){return (S.settings&&S.settings.baseCurrency)||"BYN";}
 function curObj(code){return (S.currencies||[]).find(c=>c.code===code);}
 function sym(code){const c=curObj(code);return c?c.symbol:(code||"");}
 function rate(code){const c=curObj(code);return c?(+c.rate||1):1;}
@@ -517,12 +518,16 @@ function fmt(n,sign,code){
 /* --- Счета --- */
 function accById(id){return (S.accounts||[]).find(a=>a.id===id);}
 function accCur(t){const a=t&&t.account?accById(t.account):null;return a?a.currency:baseCode();}
+function hasAccountTx(id){return (S.tx||[]).some(t=>t.account===id);}
+function hasBizTx(id){return (S.tx||[]).some(t=>t.biz===id);}
+function activeAccounts(){return (S.accounts||[]).filter(a=>!a.archived);}
 function accountBalance(id){
   const a=accById(id); if(!a)return 0;
   let v=Number(a.opening)||0;
   for(const t of S.tx){ if(t.account!==id)continue;
     if(t.type==="in"||t.type==="draw")v+=t.amount;           // деньги пришли на счёт
     else if(t.type==="out"||t.type==="contribution")v-=t.amount; // ушли со счёта
+    else if(t.type==="account_adjustment")v+=Number(t.delta)||0;  // сверка фактического баланса
   }
   return v;
 }
@@ -539,7 +544,7 @@ function personalBalance(){
   return (S.accounts||[]).reduce((s,a)=>s+toBase(accountBalance(a.id),a.currency),0);
 }
 function totalCreditUsed(){return (S.accounts||[]).reduce((s,a)=>s+toBase(accUsedCredit(a.id),a.currency),0);}
-function totalAvailable(){return (S.accounts||[]).reduce((s,a)=>s+toBase(accAvailable(a.id),a.currency),0);}
+function totalAvailable(){return activeAccounts().reduce((s,a)=>s+toBase(accAvailable(a.id),a.currency),0);}
 
 function bizBalance(id){
   const b=bizById(id); let v=b?Number(b.opening)||0:0;
@@ -548,6 +553,7 @@ function bizBalance(id){
     else if(t.type==="biz_expense")v-=t.amount;
     else if(t.type==="draw")v-=toBase(t.amount,accCur(t));         // вывод в валюте счёта -> база
     else if(t.type==="contribution")v+=toBase(t.amount,accCur(t)); // возврат в валюте счёта -> база
+    else if(t.type==="biz_adjustment")v+=Number(t.delta)||0;       // сверка фактического баланса
   }
   return v;
 }
@@ -748,12 +754,12 @@ function viewOverview(){
   // Полоса счетов
   '<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Счета</h3><button class="btn ghost sm" data-act="nav" data-v="accounts">Управлять →</button></div>'+
     '<div class="card-b" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:14px">'+
-    S.accounts.map(acc=>{const b=accountBalance(acc.id);const used=accUsedCredit(acc.id);
+    (activeAccounts().map(acc=>{const b=accountBalance(acc.id);const used=accUsedCredit(acc.id);
       return '<div style="flex:0 0 auto;min-width:150px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)">'+
         '<div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">'+acc.emoji+' '+esc(acc.name)+'</div>'+
         '<div class="mono" style="font-weight:700;font-size:17px;margin-top:5px;color:'+(b<0?'var(--liab)':'var(--ink)')+'">'+fmt(b,false,acc.currency)+'</div>'+
         (acc.limit>0?'<div class="fs12 muted mono">'+(used>0?'долг '+fmt(used,false,acc.currency)+' · ':'')+'лимит '+fmt(acc.limit,false,acc.currency)+'</div>':'<div class="fs12 muted">'+accKindLabel(acc.kind)+'</div>')+
-      '</div>';}).join("")+
+      '</div>';}).join("")||'<div class="fs13 muted" style="padding:6px 0">Активных счетов пока нет.</div>')+
     '</div></div>'+
   // KPI
   '<div class="stats" style="margin-bottom:16px">'+
@@ -796,17 +802,21 @@ function viewAccounts(){
     '<div style="border:1px solid var(--line);border-radius:10px;padding:9px 13px;background:var(--surface-2)"><div class="fs12 muted">'+code+' · курс '+(code===baseCode()?"базовая":fmt(rate(code)))+'</div><div class="mono" style="font-weight:700;font-size:16px;color:'+(byCur[code]<0?'var(--liab)':'var(--ink)')+'">'+fmt(byCur[code],false,code)+'</div></div>'
   ).join("");
 
-  const cards=S.accounts.map(a=>{
+  const ordered=[...S.accounts].sort((a,b)=>Number(!!a.archived)-Number(!!b.archived));
+  const cards=ordered.map(a=>{
     const b=accountBalance(a.id); const used=accUsedCredit(a.id); const avail=accAvailable(a.id);
+    const history=hasAccountTx(a.id);
     const isCredit=(a.limit||0)>0;
     const pctUsed=isCredit?Math.min(100,Math.round(used/a.limit*100)):0;
-    return '<div class="card pad">'+
+    const archiveAction=a.archived
+      ?'<button class="btn sm" data-act="restore-acc" data-id="'+a.id+'">Вернуть из архива</button>'
+      :(history?'<button class="btn sm ghost" data-act="archive-acc" data-id="'+a.id+'">В архив</button>':'<button class="btn sm ghost danger" data-act="del-acc" data-id="'+a.id+'">'+svg(I.trash)+'Удалить</button>');
+    return '<div class="card pad" style="'+(a.archived?'opacity:.72;':'')+'">'+
       '<div style="display:flex;align-items:center;gap:11px;margin-bottom:10px">'+
         '<div class="avatar" style="background:var(--surface-3);font-size:17px">'+a.emoji+'</div>'+
-        '<div style="flex:1;min-width:0"><div style="font-weight:600;font-family:var(--disp)">'+esc(a.name)+'</div>'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:600;font-family:var(--disp)">'+esc(a.name)+(a.archived?' <span class="chip c-adjustment" style="vertical-align:middle">архив</span>':'')+'</div>'+
         '<div class="fs12 muted">'+accKindLabel(a.kind)+' · '+a.currency+'</div></div>'+
         '<button class="x-btn" data-act="edit-acc" data-id="'+a.id+'" title="Изменить">'+svg(I.edit)+'</button>'+
-        '<button class="x-btn" data-act="del-acc" data-id="'+a.id+'" title="Удалить">'+svg(I.trash)+'</button>'+
       '</div>'+
       '<div class="mono" style="font-weight:700;font-size:24px;color:'+(b<0?'var(--liab)':'var(--personal)')+'">'+fmt(b,false,a.currency)+'</div>'+
       (a.currency!==baseCode()?'<div class="fs12 muted mono">≈ '+fmt(toBase(b,a.currency))+' в '+sym(baseCode())+'</div>':'')+
@@ -814,20 +824,27 @@ function viewAccounts(){
         '<div style="margin-top:11px"><div class="prog"><span style="width:'+pctUsed+'%;background:var(--liab)"></span></div>'+
         '<div style="display:flex;justify-content:space-between;margin-top:6px" class="fs12 muted"><span>Долг: <b class="neg mono">'+fmt(used,false,a.currency)+'</b></span><span>Доступно: <b class="mono" style="color:var(--personal)">'+fmt(avail,false,a.currency)+'</b> из '+fmt(a.limit,false,a.currency)+'</span></div></div>'
         :'')+
+      (a.archived?'<div class="fs12 muted" style="margin-top:10px">Счёт скрыт из формы новых операций.</div>':'')+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+
+        (!a.archived?'<button class="btn sm" data-act="adjust-acc" data-id="'+a.id+'">Сверить баланс</button>':'')+
+        archiveAction+
+      '</div>'+
     '</div>';
   }).join("");
 
   const cUsed=totalCreditUsed();
+  const activeCount=activeAccounts().length;
+  const archivedCount=S.accounts.length-activeCount;
   return head("Счета","Все карты, кредитки и наличные в одном месте. Итог сводится в базовую валюту "+sym(baseCode())+" по курсам из настроек.")+
   '<div class="card pad" style="margin-bottom:16px">'+
     '<div class="two" style="grid-template-columns:1fr 1fr 1fr">'+
       '<div><div class="eyebrow">Итог по всем счетам</div><div class="mono" style="font-size:26px;font-weight:700;color:var(--personal)">'+fmt(personalBalance())+'</div><div class="fs12 muted">в базовой валюте</div></div>'+
-      '<div><div class="eyebrow">Доступно с лимитами</div><div class="mono" style="font-size:26px;font-weight:700">'+fmt(totalAvailable())+'</div><div class="fs12 muted">свои деньги + кредитные лимиты</div></div>'+
+      '<div><div class="eyebrow">Доступно с лимитами</div><div class="mono" style="font-size:26px;font-weight:700">'+fmt(totalAvailable())+'</div><div class="fs12 muted">активные счета и их кредитные лимиты</div></div>'+
       '<div><div class="eyebrow">Долг по кредиткам</div><div class="mono" style="font-size:26px;font-weight:700;color:'+(cUsed>0?'var(--liab)':'var(--ink)')+'">'+fmt(cUsed)+'</div><div class="fs12 muted">использованный кредит/овердрафт</div></div>'+
     '</div>'+
     (curChips?'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">'+curChips+'</div>':'')+
   '</div>'+
-  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="eyebrow">СЧЕТА · '+S.accounts.length+'</div><button class="btn sm" data-act="add-acc">'+svg(I.add)+'Добавить счёт</button></div>'+
+  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="eyebrow">СЧЕТА · '+activeCount+(archivedCount?' · В АРХИВЕ '+archivedCount:'')+'</div><button class="btn sm" data-act="add-acc">'+svg(I.add)+'Добавить счёт</button></div>'+
   (S.accounts.length?'<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(270px,1fr))">'+cards+'</div>':'<div class="empty">'+svg(I.card)+'<b>Счетов пока нет</b><span class="fs13">Добавьте карты и наличные, чтобы вести учёт по каждому.</span></div>');
 }
 
@@ -858,7 +875,7 @@ function viewAdd(){
       '<div class="field"><label>Дата</label><input class="inp" id="f-date" type="date" value="'+TODAY()+'"></div>'+
     '</div>'+
     '<div id="f-acc-wrap" class="field"><label id="f-acc-lbl">Счёт</label><select class="inp" id="f-acc">'+
-      S.accounts.map(acc=>'<option value="'+acc.id+'" data-cur="'+acc.currency+'">'+acc.emoji+' '+esc(acc.name)+' · '+acc.currency+'</option>').join("")+'</select></div>'+
+      (activeAccounts().length?activeAccounts().map(acc=>'<option value="'+acc.id+'" data-cur="'+acc.currency+'">'+acc.emoji+' '+esc(acc.name)+' · '+acc.currency+'</option>').join(""):'<option value="">Нет активных счетов</option>')+'</select></div>'+
     '<div id="f-biz-wrap" class="field hidden"><label>Бизнес</label><select class="inp" id="f-biz">'+
       S.businesses.map(b=>'<option value="'+b.id+'">'+b.emoji+' '+esc(b.name)+'</option>').join("")+'</select></div>'+
     '<div class="field" id="f-cat-wrap"><label>Категория</label><select class="inp" id="f-cat"></select></div>'+
@@ -913,27 +930,32 @@ function updateAmountCurrencyLabel(){
    ========================================================= */
 const TYPE_META={
   in:{n:"Доход",c:"c-in"}, out:{n:"Расход",c:"c-out"}, draw:{n:"Вывод",c:"c-draw"},
-  contribution:{n:"Возврат в бизнес",c:"c-contribution"}, biz_income:{n:"Доход бизнеса",c:"c-biz_income"}, biz_expense:{n:"Расход бизнеса",c:"c-biz_expense"}
+  contribution:{n:"Возврат в бизнес",c:"c-contribution"}, biz_income:{n:"Доход бизнеса",c:"c-biz_income"}, biz_expense:{n:"Расход бизнеса",c:"c-biz_expense"},
+  account_adjustment:{n:"Корректировка счёта",c:"c-adjustment"}, biz_adjustment:{n:"Корректировка бизнеса",c:"c-adjustment"}
 };
 function viewTx(){
   const f=S.ui.txFilter, p=S.ui.txPeriod;
   let list=[...S.tx].sort((a,b)=>b.date.localeCompare(a.date));
-  if(f!=="all")list=list.filter(t=>t.type===f);
+  if(f==="adjustments")list=list.filter(t=>t.type==="account_adjustment"||t.type==="biz_adjustment");
+  else if(f!=="all")list=list.filter(t=>t.type===f);
   if(p==="month")list=list.filter(t=>inThisMonth(t.date));
   const filterBtn=(id,lbl)=>'<button class="btn sm '+(f===id?'primary':'')+'" data-act="tx-filter" data-f="'+id+'">'+lbl+'</button>';
   const rows=list.map(t=>{
-    const m=TYPE_META[t.type];
+    const m=TYPE_META[t.type]||{n:t.type,c:"c-adjustment"};
     const b=t.biz?bizById(t.biz):null;
     const acc=t.account?accById(t.account):null;
     const code=acc?acc.currency:baseCode();
-    const sign=(t.type==="out"||t.type==="contribution"||t.type==="biz_expense")?"-":(t.type==="draw"?"":"+");
-    const amtCls=t.type==="draw"?"amber":((t.type==="in"||t.type==="biz_income")?"pos":"neg");
+    const isAdj=t.type==="account_adjustment"||t.type==="biz_adjustment";
+    const delta=isAdj?(Number(t.delta)||0):0;
+    const shownAmount=isAdj?Math.abs(delta):t.amount;
+    const sign=isAdj?(delta>0?"+":delta<0?"−":""):(t.type==="out"||t.type==="contribution"||t.type==="biz_expense"?"−":(t.type==="draw"?"":"+"));
+    const amtCls=isAdj?(delta>=0?"pos":"neg"):(t.type==="draw"?"amber":((t.type==="in"||t.type==="biz_income")?"pos":"neg"));
     return '<tr>'+
       '<td class="mono fs12 muted" data-label="Дата">'+fmtDate(t.date)+'</td>'+
       '<td data-label="Тип"><span class="chip '+m.c+'"><span class="d" style="background:currentColor"></span>'+m.n+'</span></td>'+
       '<td data-label="Детали"><span class="tag-cat">'+esc(t.cat||"—")+'</span>'+(b?' <span class="fs12 muted">'+b.emoji+' '+esc(b.name)+'</span>':'')+(t.note?'<div class="fs12 muted" style="margin-top:2px">'+esc(t.note)+'</div>':'')+'</td>'+
       '<td class="fs12 muted" data-label="Счёт">'+(acc?acc.emoji+' '+esc(acc.name):(b?'счёт бизнеса':'—'))+'</td>'+
-      '<td class="num '+amtCls+'" data-label="Сумма" style="font-weight:600">'+sign+fmt(t.amount,false,code).replace("−","")+(code!==baseCode()?'<div class="fs12 muted" style="font-weight:400">≈ '+fmt(toBase(t.amount,code))+'</div>':'')+'</td>'+
+      '<td class="num '+amtCls+'" data-label="Сумма" style="font-weight:600">'+sign+fmt(shownAmount,false,code).replace("−","")+(code!==baseCode()?'<div class="fs12 muted" style="font-weight:400">≈ '+fmt(toBase(shownAmount,code))+'</div>':'')+'</td>'+
       '<td class="num no-label"><button class="x-btn" data-act="del-tx" data-id="'+t.id+'" title="Удалить">'+svg(I.trash,'')+'</button></td>'+
     '</tr>';
   }).join("");
@@ -941,7 +963,7 @@ function viewTx(){
     :'<div class="empty">'+svg(I.tx)+'<b>Операций пока нет</b><span class="fs13">Добавьте первую запись, чтобы начать вести учёт.</span><div style="margin-top:12px"><button class="btn primary" data-act="nav" data-v="add">Внести операцию</button></div></div>';
   return head("Операции",list.length+" записей")+
   '<div class="filters">'+
-    filterBtn("all","Все")+filterBtn("in","Доходы")+filterBtn("out","Расходы")+filterBtn("draw","Выводы")+filterBtn("contribution","Возвраты")+filterBtn("biz_income","Доход бизнеса")+filterBtn("biz_expense","Расход бизнеса")+
+    filterBtn("all","Все")+filterBtn("in","Доходы")+filterBtn("out","Расходы")+filterBtn("draw","Выводы")+filterBtn("contribution","Возвраты")+filterBtn("biz_income","Доход бизнеса")+filterBtn("biz_expense","Расход бизнеса")+filterBtn("adjustments","Корректировки")+
     '<span class="spacer"></span>'+
     '<div class="seg"><button class="'+(p==="all"?"on":"")+'" data-act="tx-period" data-p="all">За всё время</button><button class="'+(p==="month"?"on":"")+'" data-act="tx-period" data-p="month">Этот месяц</button></div>'+
     '<button class="btn primary sm" data-act="nav" data-v="add">'+svg(I.add)+'Добавить</button>'+
@@ -1003,6 +1025,7 @@ function viewDebts(){
 function viewBusiness(){
   const cards=S.businesses.map(b=>{
     const s=bizStats(b.id);
+    const history=hasBizTx(b.id);
     const net=s.draw-s.contribution;
     return '<div class="card pad">'+
       '<div style="display:flex;align-items:center;gap:11px;margin-bottom:12px">'+
@@ -1010,13 +1033,14 @@ function viewBusiness(){
         '<div style="flex:1"><div style="font-weight:600;font-family:var(--disp)">'+esc(b.name)+'</div>'+
         '<div class="fs12 muted">на счёте: <b class="mono">'+fmt(s.balance)+'</b></div></div>'+
         '<button class="x-btn" data-act="edit-biz" data-id="'+b.id+'" title="Изменить">'+svg(I.edit)+'</button>'+
-        '<button class="x-btn" data-act="del-biz" data-id="'+b.id+'" title="Удалить">'+svg(I.trash)+'</button>'+
+        (!history?'<button class="x-btn" data-act="del-biz" data-id="'+b.id+'" title="Удалить">'+svg(I.trash)+'</button>':'')+
       '</div>'+
       '<div class="kpi-line"><span class="muted">Выручка</span><b class="pos">'+fmt(s.income,true)+'</b></div>'+
       '<div class="kpi-line"><span class="muted">Расходы бизнеса</span><b class="neg">'+fmt(s.expense)+'</b></div>'+
       '<div class="kpi-line"><span class="muted">Выведено себе</span><b class="amber">'+fmt(s.draw)+'</b></div>'+
       '<div class="kpi-line"><span class="muted">Возвращено в дело</span><b>'+fmt(s.contribution)+'</b></div>'+
       '<div class="kpi-line" style="border-top:1px solid var(--line);margin-top:4px;padding-top:9px"><span style="font-weight:600">Ваш чистый доход отсюда</span><b class="'+(net>=0?'pos':'neg')+'" style="font-size:15px">'+fmt(net,true)+'</b></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="adjust-biz" data-id="'+b.id+'">Сверить баланс</button></div>'+
     '</div>';
   }).join("");
   const totDraw=sumTx(t=>t.type==="draw"), totContr=sumTx(t=>t.type==="contribution");
@@ -1029,7 +1053,7 @@ function viewBusiness(){
     '</div>'+
   '</div>'+
   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="eyebrow">ТОЧКИ · '+S.businesses.length+'</div><button class="btn sm" data-act="add-biz">'+svg(I.add)+'Добавить точку</button></div>'+
-  '<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">'+cards+'</div>';
+  (S.businesses.length?'<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">'+cards+'</div>':'<div class="empty">'+svg(I.biz)+'<b>Точек пока нет</b><span class="fs13">Добавьте первую точку бизнеса.</span></div>');
 }
 
 /* =========================================================
@@ -1262,23 +1286,24 @@ function mval(id){const e=document.getElementById(id);return e?e.value:"";}
 
 function bizForm(b){
   const isEdit=!!b;
-  const current=isEdit?bizBalance(b.id):0;
-  b=b||{name:"",emoji:"🏢"};
+  const locked=isEdit&&hasBizTx(b.id);
+  b=b||{name:"",emoji:"🏢",opening:0};
   return '<div class="row2"><div class="field"><label>Название</label><input class="inp" id="b-name" value="'+esc(b.name||"")+'" placeholder="Студия растяжки №1"></div>'+ 
     '<div class="field"><label>Эмодзи</label><input class="inp" id="b-emoji" value="'+esc(b.emoji||"🏢")+'" maxlength="2"></div></div>'+ 
-    '<div class="field"><label>Текущий баланс на счёте</label><input class="inp mono" id="b-open" type="number" step="0.01" value="'+current+'"><div class="hint">При сохранении стартовый баланс будет скорректирован так, чтобы итог точки совпал с указанной суммой.</div></div>';
+    '<div class="field"><label>Стартовый баланс</label><input class="inp mono" id="b-open" type="number" step="0.01" value="'+(Number(b.opening)||0)+'" '+(locked?'disabled':'')+'><div class="hint">'+(locked?'После первой операции стартовый баланс заблокирован. Для сверки используйте кнопку «Сверить баланс» на карточке точки.':'Укажите фактический баланс точки на момент начала учёта.')+'</div></div>';
 }
 
 function accForm(a){
+  const isEdit=!!a;
+  const locked=isEdit&&hasAccountTx(a.id);
   a=a||{name:"",emoji:"💳",kind:"card",currency:baseCode(),opening:0,limit:0};
   const kinds=[["card","Карта"],["credit","Кредитка / овердрафт"],["cash","Наличные"]];
-  return '<div class="row2"><div class="field"><label>Название</label><input class="inp" id="ac-name" value="'+esc(a.name)+'" placeholder="Тинькофф Black"></div>'+
+  return '<div class="row2"><div class="field"><label>Название</label><input class="inp" id="ac-name" value="'+esc(a.name)+'" placeholder="АльфаБанк"></div>'+
     '<div class="field"><label>Значок</label><input class="inp" id="ac-emoji" value="'+esc(a.emoji)+'" maxlength="2"></div></div>'+
     '<div class="row2"><div class="field"><label>Тип счёта</label><select class="inp" id="ac-kind">'+kinds.map(k=>'<option value="'+k[0]+'" '+(a.kind===k[0]?"selected":"")+'>'+k[1]+'</option>').join("")+'</select></div>'+
-    '<div class="field"><label>Валюта</label><select class="inp" id="ac-cur">'+S.currencies.map(c=>'<option value="'+c.code+'" '+(a.currency===c.code?"selected":"")+'>'+c.code+' '+esc(c.symbol)+'</option>').join("")+'</select></div></div>'+
-    '<div class="row2"><div class="field"><label>Текущий баланс</label><input class="inp mono" id="ac-open" type="number" value="'+(a.opening||0)+'"></div>'+
-    '<div class="field"><label>Кредитный лимит / овердрафт</label><input class="inp mono" id="ac-limit" type="number" value="'+(a.limit||0)+'"><div class="hint">0 — если обычная карта или наличные</div></div></div>'+
-    '<div class="fs12 muted">Для кредитки текущий баланс можно указать отрицательным — это уже потраченная часть кредита.</div>';
+    '<div class="field"><label>Валюта</label><select class="inp" id="ac-cur" '+(locked?'disabled':'')+'>'+S.currencies.map(c=>'<option value="'+c.code+'" '+(a.currency===c.code?"selected":"")+'>'+c.code+' '+esc(c.symbol)+'</option>').join("")+'</select><div class="hint">'+(locked?'Валюта заблокирована, потому что по счёту уже есть операции.':'Валюту можно изменить до первой операции.')+'</div></div></div>'+
+    '<div class="row2"><div class="field"><label>Стартовый баланс</label><input class="inp mono" id="ac-open" type="number" step="0.01" value="'+(Number(a.opening)||0)+'" '+(locked?'disabled':'')+'><div class="hint">'+(locked?'После первой операции стартовый баланс заблокирован. Используйте «Сверить баланс».':'Для кредитки баланс может быть отрицательным — это уже использованная часть кредита.')+'</div></div>'+
+    '<div class="field"><label>Кредитный лимит / овердрафт</label><input class="inp mono" id="ac-limit" type="number" step="0.01" value="'+(Number(a.limit)||0)+'"><div class="hint">0 — если обычная карта или наличные</div></div></div>';
 }
 function debtForm(d){
   d=d||{dir:"in",who:"",amount:"",date:TODAY(),due:daysAhead(30),note:""};
@@ -1357,25 +1382,43 @@ document.addEventListener("click",e=>{
     const n=mval("b-name").trim();if(!n){toast("Введите название");return false;}
     S.businesses.push({id:uid(),name:n,emoji:mval("b-emoji")||"🏢",opening:+mval("b-open")||0});persist();render();toast("Точка добавлена");});
     return;}
-  if(act==="edit-biz"){const b=bizById(el.dataset.id);const before=bizBalance(b.id);openModal("Изменить точку",bizForm(b),()=>{
+  if(act==="edit-biz"){const b=bizById(el.dataset.id);const locked=hasBizTx(b.id);openModal("Изменить точку",bizForm(b),()=>{
     const n=mval("b-name").trim();if(!n){toast("Введите название");return false;}
-    const wanted=+mval("b-open")||0;
-    b.name=n;b.emoji=mval("b-emoji")||"🏢";b.opening=(Number(b.opening)||0)+(wanted-before);
+    b.name=n;b.emoji=mval("b-emoji")||"🏢";
+    if(!locked)b.opening=+mval("b-open")||0;
     persist();render();toast("Сохранено");});
     return;}
-  if(act==="del-biz"){if(S.tx.some(t=>t.biz===el.dataset.id)){toast("По этой точке есть операции — сначала удалите их");return;}S.businesses=S.businesses.filter(b=>b.id!==el.dataset.id);persist();render();toast("Точка удалена");return;}
+  if(act==="adjust-biz"){const b=bizById(el.dataset.id);const current=bizBalance(b.id);openModal("Сверить баланс точки",
+    '<div class="field"><label>Фактический баланс ('+C()+')</label><input class="inp mono" id="adj-target" type="number" step="0.01" value="'+current+'"></div>'+
+    '<div class="field"><label>Дата сверки</label><input class="inp" id="adj-date" type="date" value="'+TODAY()+'"></div>'+
+    '<div class="field"><label>Комментарий</label><input class="inp" id="adj-note" placeholder="Например: сверка с банковской выпиской"></div>'+
+    '<div class="fs12 muted">Корректировка изменит только баланс точки и не будет считаться доходом или расходом бизнеса.</div>',
+    ()=>{const target=Number(mval("adj-target"));if(!Number.isFinite(target)){toast("Введите фактический баланс");return false;}const delta=target-bizBalance(b.id);if(Math.abs(delta)<1e-9){toast("Баланс уже совпадает");return false;}S.tx.push({id:uid(),type:"biz_adjustment",biz:b.id,amount:Math.abs(delta),delta,cat:"Корректировка баланса",date:mval("adj-date")||TODAY(),note:mval("adj-note").trim()});S.meta.lastEntryDate=TODAY();persist();render();toast("Баланс точки скорректирован");});
+    return;}
+  if(act==="del-biz"){if(hasBizTx(el.dataset.id)){toast("По этой точке есть операции — удалить её нельзя");return;}S.businesses=S.businesses.filter(b=>b.id!==el.dataset.id);persist();render();toast("Точка удалена");return;}
 
   // accounts
   if(act==="add-acc"){openModal("Новый счёт",accForm(),()=>{
     const n=mval("ac-name").trim();if(!n){toast("Введите название");return false;}
-    S.accounts.push({id:uid(),name:n,emoji:mval("ac-emoji")||"💳",kind:mval("ac-kind"),currency:mval("ac-cur"),opening:+mval("ac-open")||0,limit:+mval("ac-limit")||0});
+    S.accounts.push({id:uid(),name:n,emoji:mval("ac-emoji")||"💳",kind:mval("ac-kind"),currency:mval("ac-cur"),opening:+mval("ac-open")||0,limit:+mval("ac-limit")||0,archived:false});
     persist();render();toast("Счёт добавлен");});
     return;}
-  if(act==="edit-acc"){const a=accById(el.dataset.id);openModal("Изменить счёт",accForm(a),()=>{
-    a.name=mval("ac-name").trim();a.emoji=mval("ac-emoji")||"💳";a.kind=mval("ac-kind");a.currency=mval("ac-cur");a.opening=+mval("ac-open")||0;a.limit=+mval("ac-limit")||0;
+  if(act==="edit-acc"){const a=accById(el.dataset.id);const locked=hasAccountTx(a.id);openModal("Изменить счёт",accForm(a),()=>{
+    const n=mval("ac-name").trim();if(!n){toast("Введите название");return false;}
+    a.name=n;a.emoji=mval("ac-emoji")||"💳";a.kind=mval("ac-kind");a.limit=+mval("ac-limit")||0;
+    if(!locked){a.currency=mval("ac-cur");a.opening=+mval("ac-open")||0;}
     persist();render();toast("Сохранено");});
     return;}
-  if(act==="del-acc"){if(S.tx.some(t=>t.account===el.dataset.id)){toast("По этому счёту есть операции — сначала удалите их");return;}S.accounts=S.accounts.filter(a=>a.id!==el.dataset.id);persist();render();toast("Счёт удалён");return;}
+  if(act==="adjust-acc"){const a=accById(el.dataset.id);const current=accountBalance(a.id);openModal("Сверить баланс счёта",
+    '<div class="field"><label>Фактический баланс ('+sym(a.currency)+')</label><input class="inp mono" id="adj-target" type="number" step="0.01" value="'+current+'"></div>'+
+    '<div class="field"><label>Дата сверки</label><input class="inp" id="adj-date" type="date" value="'+TODAY()+'"></div>'+
+    '<div class="field"><label>Комментарий</label><input class="inp" id="adj-note" placeholder="Например: сверка с приложением банка"></div>'+
+    '<div class="fs12 muted">Корректировка изменит только баланс счёта и не будет считаться личным доходом или расходом.</div>',
+    ()=>{const target=Number(mval("adj-target"));if(!Number.isFinite(target)){toast("Введите фактический баланс");return false;}const delta=target-accountBalance(a.id);if(Math.abs(delta)<1e-9){toast("Баланс уже совпадает");return false;}S.tx.push({id:uid(),type:"account_adjustment",account:a.id,amount:Math.abs(delta),delta,cat:"Корректировка баланса",date:mval("adj-date")||TODAY(),note:mval("adj-note").trim()});S.meta.lastEntryDate=TODAY();persist();render();toast("Баланс счёта скорректирован");});
+    return;}
+  if(act==="archive-acc"){const a=accById(el.dataset.id);a.archived=true;persist();render();toast("Счёт перемещён в архив");return;}
+  if(act==="restore-acc"){const a=accById(el.dataset.id);a.archived=false;persist();render();toast("Счёт возвращён из архива");return;}
+  if(act==="del-acc"){if(hasAccountTx(el.dataset.id)){const a=accById(el.dataset.id);a.archived=true;persist();render();toast("Счёт с историей перемещён в архив");return;}S.accounts=S.accounts.filter(a=>a.id!==el.dataset.id);persist();render();toast("Счёт удалён");return;}
 
   // currencies
   if(act==="add-cur"){const code=mval("cur-code").trim().toUpperCase();const symb=mval("cur-sym").trim();const r=+mval("cur-rate");
@@ -1412,7 +1455,7 @@ document.addEventListener("click",e=>{
   if(act==="import"){importJSON();return;}
   if(act==="reset"){openModal("Начать с чистого листа?",'<p style="margin:0;color:var(--ink-2)">Все операции, долги и цели будут удалены. Балансы счетов обнулятся. Можно оставить структуру — счета, точки бизнеса, валюты и категории.</p><label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13.5px"><input type="checkbox" id="keep-biz" checked> Оставить счета, точки бизнеса, валюты и категории</label>',
     ()=>{const keep=document.getElementById("keep-biz").checked;const fresh=seed();
-      if(keep){S={...fresh,settings:S.settings,currencies:S.currencies,accounts:S.accounts.map(a=>({...a,opening:0})),businesses:S.businesses.map(b=>({...b,opening:0})),categories:S.categories,tx:[],debts:[],goals:[],meta:{lastEntryDate:null,lastNotifiedDate:null,created:TODAY()}};}
+      if(keep){S={...fresh,settings:S.settings,currencies:S.currencies,accounts:S.accounts.map(a=>({...a,opening:0,archived:false})),businesses:S.businesses.map(b=>({...b,opening:0})),categories:S.categories,tx:[],debts:[],goals:[],meta:{lastEntryDate:null,lastNotifiedDate:null,created:TODAY()}};}
       else {S={...fresh,accounts:fresh.accounts.map(a=>({...a,opening:0})),businesses:fresh.businesses.map(b=>({...b,opening:0})),tx:[],debts:[],goals:[]};}
       S.ui={view:"overview",txFilter:"all",txPeriod:"all"};persist();render();toast("Готово — можно вести реальный учёт");},"Да, очистить");
     return;}
@@ -1431,6 +1474,8 @@ function saveTx(){
   const t={id:uid(),type,amount,cat:mval("f-cat"),date:mval("f-date")||TODAY(),note:mval("f-note").trim()};
   if(type==="draw"||type==="contribution"||type==="biz_income"||type==="biz_expense")t.biz=mval("f-biz");
   if(type==="in"||type==="out"||type==="draw"||type==="contribution")t.account=mval("f-acc");
+  if((type==="in"||type==="out"||type==="draw"||type==="contribution")&&(!t.account||!accById(t.account)||accById(t.account).archived)){toast("Сначала добавьте или восстановите активный счёт");return;}
+  if((type==="draw"||type==="contribution"||type==="biz_income"||type==="biz_expense")&&(!t.biz||!bizById(t.biz))){toast("Сначала добавьте точку бизнеса");return;}
   const code=t.account?accCur(t):baseCode();
   S.tx.push(t);
   S.meta.lastEntryDate=TODAY();
@@ -1564,6 +1609,9 @@ async function init(){
     (S.tx||[]).forEach(t=>{ if(!t.account && (t.type==="in"||t.type==="out"||t.type==="draw"||t.type==="contribution"))t.account="a0"; });
     persist();
   }
+  let accountMetaChanged=false;
+  (S.accounts||[]).forEach(a=>{if(typeof a.archived!=="boolean"){a.archived=false;accountMetaChanged=true;}});
+  if(accountMetaChanged)persist();
   if(!S.ui)S.ui={view:"overview",txFilter:"all",txPeriod:"all"};
   if(!saved)persist();
   render();
