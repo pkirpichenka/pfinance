@@ -471,7 +471,7 @@ function seed(){
     currencies,legalEntities,accounts,businesses,
     categories:{in:catIncome,out:catExpense,bizIn:catBizIn,bizOut:catBizOut},
     tx:[], debts:[], goals:[],
-    meta:{lastEntryDate:null,lastNotifiedDate:null,created:TODAY(),modelVersion:5},
+    meta:{lastEntryDate:null,lastNotifiedDate:null,created:TODAY(),modelVersion:6},
     ui:{view:"overview",txFilter:"all",txPeriod:"all"}
   };
 }
@@ -569,7 +569,7 @@ function txPaymentMethod(t){
 }
 function accCur(t){const a=t&&t.account?accById(t.account):null;return a?a.currency:baseCode();}
 function hasAccountTx(id){return (S.tx||[]).some(t=>t.account===id||t.businessAccount===id||t.fromAccount===id||t.toAccount===id);}
-function hasBizTx(id){return (S.tx||[]).some(t=>t.biz===id);}
+function hasBizTx(id){return (S.tx||[]).some(t=>t.biz===id||(t.type==="personal_biz_expense"&&(t.allocations||[]).some(a=>a.biz===id)));}
 function hasEntityLinks(id){return (S.businesses||[]).some(b=>b.legalEntityId===id)||(S.accounts||[]).some(a=>a.legalEntityId===id);}
 function activeAccounts(){return (S.accounts||[]).filter(a=>!a.archived);}
 function activeBusinesses(){return (S.businesses||[]).filter(b=>!b.archived);}
@@ -594,8 +594,8 @@ function accountBalance(id){
     }
     if(t.type==="biz_adjustment"&&t.account===id){v+=Number(t.delta)||0;continue;}
     if(t.account!==id)continue;
-    if(t.type==="in"||t.type==="draw"||t.type==="biz_income")v+=Number(t.amount)||0;
-    else if(t.type==="out"||t.type==="contribution"||t.type==="biz_expense")v-=Number(t.amount)||0;
+    if(t.type==="in"||t.type==="draw"||t.type==="biz_income"||t.type==="debt_borrow"||t.type==="debt_repayment_in")v+=Number(t.amount)||0;
+    else if(t.type==="out"||t.type==="contribution"||t.type==="biz_expense"||t.type==="personal_biz_expense"||t.type==="debt_issue"||t.type==="debt_repayment_out")v-=Number(t.amount)||0;
     else if(t.type==="account_adjustment")v+=Number(t.delta)||0;
   }
   return v;
@@ -655,22 +655,30 @@ function monthAgg(){
   return {
     income: sumTx(t=>t.type==="in"&&inThisMonth(t.date)),
     expense: sumTx(t=>t.type==="out"&&inThisMonth(t.date)),
-    draw: sumTx(t=>t.type==="draw"&&inThisMonth(t.date)),
+    draw: sumTx(t=>t.type==="draw"&&t.cat!=="Возмещение личных расходов"&&inThisMonth(t.date)),
     contribution: sumTx(t=>t.type==="contribution"&&inThisMonth(t.date)),
   };
 }
 function netDrawMonth(){const a=monthAgg();return a.draw-a.contribution;}
 function realIncomeMonth(){const a=monthAgg();return a.income+(a.draw-a.contribution);} // личный + чистый вывод
 
-function debtRemaining(d){return d.amount-(d.repaid||[]).reduce((s,r)=>s+r.amount,0);}
-function owedToMe(){return S.debts.filter(d=>d.dir==="in").reduce((s,d)=>s+Math.max(0,debtRemaining(d)),0);}
-function iOwe(){return S.debts.filter(d=>d.dir==="out").reduce((s,d)=>s+Math.max(0,debtRemaining(d)),0);}
+function debtCurrency(d){return d&&d.currency||baseCode();}
+function debtRemaining(d){return (Number(d.amount)||0)-(d.repaid||[]).reduce((s,r)=>s+(Number(r.amount)||0),0);}
+function debtBaseRemaining(d){return toBase(Math.max(0,debtRemaining(d)),debtCurrency(d));}
+function owedToMe(){return S.debts.filter(d=>d.dir==="in").reduce((s,d)=>s+debtBaseRemaining(d),0);}
+function iOwe(){return S.debts.filter(d=>d.dir==="out").reduce((s,d)=>s+debtBaseRemaining(d),0);}
+function personalBizExpenseForBiz(id){
+  return (S.tx||[]).filter(t=>t.type==="personal_biz_expense").reduce((sum,t)=>{
+    const a=(t.allocations||[]).find(x=>x.biz===id),acc=accById(t.account);
+    return sum+(a?toBase(a.amount,acc?acc.currency:baseCode()):0);
+  },0);
+}
 
 function bizStats(id){
   return {
     income: sumTx(t=>t.type==="biz_income"&&t.biz===id),
-    expense: sumTx(t=>t.type==="biz_expense"&&t.biz===id),
-    draw: sumTx(t=>t.type==="draw"&&t.biz===id),
+    expense: sumTx(t=>t.type==="biz_expense"&&t.biz===id)+personalBizExpenseForBiz(id),
+    draw: sumTx(t=>t.type==="draw"&&t.cat!=="Возмещение личных расходов"&&t.biz===id),
     contribution: sumTx(t=>t.type==="contribution"&&t.biz===id),
     cash: bizCashBalance(id),
     cashless: bizCashlessBalance(id),
@@ -810,7 +818,7 @@ function viewOverview(){
     const dd=dueLabel(d.due);
     return '<div class="list-row"><div class="avatar" style="background:'+(d.dir==="in"?"var(--asset-bg)":"var(--liab-bg)")+';color:'+(d.dir==="in"?"var(--asset)":"var(--liab)")+'">'+(d.dir==="in"?"←":"→")+'</div>'+
       '<div><div style="font-weight:500">'+esc(d.who)+'</div><div class="fs12 muted">'+(d.dir==="in"?"вернут вам":"вы должны")+' · '+dd.txt+'</div></div>'+
-      '<div class="spacer"></div><div class="num '+(d.dir==="in"?"blue":"neg")+'" style="font-weight:600">'+fmt(rem)+'</div></div>';
+      '<div class="spacer"></div><div class="num '+(d.dir==="in"?"blue":"neg")+'" style="font-weight:600">'+fmt(rem,false,debtCurrency(d))+'</div></div>';
   }).join(""):'<div class="empty" style="padding:20px"><b>Долгов нет</b><span class="fs13">Всё закрыто.</span></div>';
 
   // цели
@@ -934,6 +942,7 @@ const TYPES=[
   {id:"contribution", t:"Взнос в бизнес", d:"Перевёл с личного счёта", bar:"#8792A2"},
   {id:"biz_income", t:"Доход бизнеса", d:"Выручка на счёт бизнеса",     bar:"var(--personal)"},
   {id:"biz_expense",t:"Расход бизнеса",d:"Оплата со счёта бизнеса",     bar:"var(--liab)"},
+  {id:"personal_biz_expense",t:"Личная оплата за бизнес",d:"Оплатил личной картой за одну или несколько точек",bar:"var(--goal)"},
 ];
 function accountOption(a){return '<option value="'+a.id+'" data-cur="'+a.currency+'">'+a.emoji+' '+esc(a.name)+' · '+a.currency+'</option>';}
 function selectOptions(list,empty){return list.length?list.map(accountOption).join(''):'<option value="">'+empty+'</option>';}
@@ -947,6 +956,10 @@ function viewAdd(){
     '<div id="f-payment-wrap" class="field hidden"><label>Способ оплаты</label><select class="inp" id="f-payment"><option value="bank">Безналичные</option><option value="cash">Наличные</option></select><div class="hint" id="f-payment-hint"></div></div>'+
     '<div id="f-acc-wrap" class="field"><label id="f-acc-lbl">Личный счёт</label><select class="inp" id="f-acc">'+selectOptions(personalAccounts(),'Нет активных личных счетов')+'</select></div>'+
     '<div id="f-biz-acc-wrap" class="field hidden"><label id="f-biz-acc-lbl">Счёт бизнеса</label><select class="inp" id="f-biz-acc"></select><div class="hint" id="f-biz-acc-hint"></div></div>'+
+    '<div id="f-pbe-wrap" class="hidden">'+
+      '<div class="field"><label>Распределить расход между точками</label><div id="f-pbe-list" style="border:1px solid var(--line);border-radius:10px;padding:7px 12px"></div><div style="display:flex;align-items:center;gap:9px;margin-top:9px"><button type="button" class="btn sm" data-act="split-pbe">Распределить поровну</button><span class="fs12 muted" id="f-pbe-summary"></span></div></div>'+ 
+      '<div class="row2"><div class="field"><label>Как учитывать оплату</label><select class="inp" id="f-pbe-settlement"><option value="reimburse">Бизнес должен вернуть мне</option><option value="contribution">Считать взносом собственника</option></select><div class="hint">При возмещении долг создаётся отдельно для каждого юрлица.</div></div><div class="field" id="f-pbe-due-wrap"><label>Срок возмещения</label><input class="inp" id="f-pbe-due" type="date" value="'+daysAhead(30)+'"></div></div>'+ 
+    '</div>'+
     '<div id="f-transfer-wrap" class="row2 hidden"><div class="field"><label>Со счёта</label><select class="inp" id="f-from-acc">'+selectOptions(activeAccounts(),'Нет активных счетов')+'</select></div><div class="field"><label>На счёт</label><select class="inp" id="f-to-acc">'+selectOptions(activeAccounts(),'Нет активных счетов')+'</select></div></div>'+
     '<div id="f-transfer-result" class="field hidden" style="background:var(--asset-bg);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--ink-2)"></div>'+
     '<div class="field" id="f-cat-wrap"><label>Категория</label><select class="inp" id="f-cat"></select></div>'+
@@ -987,20 +1000,45 @@ function updateCashTransferAccounts(){
   if(cash&&bank&&from.value===to.value){from.value=cash.id;to.value=bank.id;}
   ensureTransferAccounts();updateTransferPreview();
 }
+function pbeBusinesses(){return activeBusinesses().filter(b=>!b.technical);}
+function renderPbeAllocations(){
+  const box=document.getElementById('f-pbe-list');if(!box||box.children.length)return;
+  const list=pbeBusinesses(),studios=list.filter(b=>/студ/i.test(b.name));
+  box.innerHTML=list.map(b=>{
+    const checked=studios.length?studios.some(x=>x.id===b.id):true,e=entityById(b.legalEntityId);
+    return '<div style="display:grid;grid-template-columns:minmax(0,1fr) 145px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)"><label class="fs13" style="display:flex;align-items:center;gap:8px;min-width:0"><input type="checkbox" class="pbe-check" data-biz="'+b.id+'" '+(checked?'checked':'')+'> <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+b.emoji+' '+esc(b.name)+'</span> <span class="muted">· '+esc(e?.name||'')+'</span></label><input class="inp mono pbe-amount" data-biz="'+b.id+'" type="number" min="0" step="0.01" value="0.00" '+(checked?'':'disabled')+'></div>';
+  }).join('')||'<span class="muted fs13">Нет активных точек бизнеса</span>';
+  distributePbe();
+}
+function pbeRows(){return [...document.querySelectorAll('.pbe-check')].map(c=>({check:c,input:document.querySelector('.pbe-amount[data-biz="'+c.dataset.biz+'"]'),biz:c.dataset.biz}));}
+function distributePbe(){
+  const rows=pbeRows().filter(r=>r.check.checked),totalC=Math.round((Number(mval('f-amount'))||0)*100);if(!rows.length){updatePbeSummary();return;}
+  const each=Math.floor(totalC/rows.length);let used=0;
+  rows.forEach((r,i)=>{const cents=i===rows.length-1?totalC-used:each;used+=cents;r.input.value=(cents/100).toFixed(2);delete r.input.dataset.manual;});
+  pbeRows().filter(r=>!r.check.checked).forEach(r=>{r.input.value='0.00';delete r.input.dataset.manual;});updatePbeSummary();
+}
+function updatePbeSummary(){
+  const rows=pbeRows(),selected=rows.filter(r=>r.check.checked),allocated=selected.reduce((s,r)=>s+(Number(r.input.value)||0),0),total=Number(mval('f-amount'))||0,box=document.getElementById('f-pbe-summary'),acc=accById(mval('f-acc')),code=acc?.currency||baseCode();
+  rows.forEach(r=>r.input.disabled=!r.check.checked);
+  if(box)box.innerHTML='Распределено <b class="mono '+(Math.abs(allocated-total)<=0.01?'pos':'neg')+'">'+fmt(allocated,false,code)+'</b> из '+fmt(total,false,code);
+}
+function updatePbeSettlement(){const wrap=document.getElementById('f-pbe-due-wrap');if(wrap)wrap.classList.toggle('hidden',mval('f-pbe-settlement')!=='reimburse');}
+function selectedPbeAllocations(){return pbeRows().filter(r=>r.check.checked).map(r=>({biz:r.biz,amount:Number(r.input.value)||0})).filter(a=>a.amount>0);}
 function refreshAddForm(){
   const type=document.getElementById('f-type').value;
-  const isTransfer=type==='transfer',isEntityTransfer=type==='entity_transfer',isCashTransfer=type==='cash_transfer';
+  const isTransfer=type==='transfer',isEntityTransfer=type==='entity_transfer',isCashTransfer=type==='cash_transfer',isPbe=type==='personal_biz_expense';
   const isAccountMove=isTransfer||isEntityTransfer||isCashTransfer;
   const isBiz=['draw','contribution','biz_income','biz_expense','cash_transfer'].includes(type);
-  const usesPersonal=['in','out','draw','contribution'].includes(type);
+  const usesPersonal=['in','out','draw','contribution','personal_biz_expense'].includes(type);
   const usesBizAccount=['draw','contribution','biz_income','biz_expense'].includes(type);
   document.getElementById('f-biz-wrap').classList.toggle('hidden',!isBiz);
   document.getElementById('f-acc-wrap').classList.toggle('hidden',!usesPersonal);
   document.getElementById('f-biz-acc-wrap').classList.toggle('hidden',!usesBizAccount);
+  document.getElementById('f-pbe-wrap').classList.toggle('hidden',!isPbe);
   document.getElementById('f-transfer-wrap').classList.toggle('hidden',!isAccountMove);
   document.getElementById('f-transfer-result').classList.toggle('hidden',!isAccountMove);
   document.getElementById('f-cat-wrap').classList.toggle('hidden',isTransfer||isCashTransfer);
-  const accLbl={in:'Куда пришло (личный счёт)',out:'С какого личного счёта',draw:'На какой личный счёт вывели',contribution:'С какого личного счёта внесли'};
+  const accLbl={in:'Куда пришло (личный счёт)',out:'С какого личного счёта',draw:'На какой личный счёт вывели',contribution:'С какого личного счёта внесли',personal_biz_expense:'С какой личной карты / счёта оплачено'};
   if(usesPersonal)document.getElementById('f-acc-lbl').textContent=accLbl[type]||'Личный счёт';
   updatePaymentMethodOptions();
   const method=selectedPaymentMethod();
@@ -1008,8 +1046,9 @@ function refreshAddForm(){
   if(usesBizAccount)document.getElementById('f-biz-acc-lbl').textContent=baccLbl[type]||'Счёт бизнеса';
   if(usesBizAccount)updateBusinessAccountOptions();
   if(isCashTransfer)updateCashTransferAccounts();else if(isAccountMove)ensureTransferAccounts();
+  if(isPbe){renderPbeAllocations();updatePbeSettlement();updatePbeSummary();}
   const catSel=document.getElementById('f-cat');let cats=[];
-  if(type==='in')cats=S.categories.in;else if(type==='out')cats=S.categories.out;else if(type==='draw')cats=['Вывод собственнику'];else if(type==='contribution')cats=['Взнос собственника'];else if(type==='biz_income')cats=S.categories.bizIn;else if(type==='entity_transfer')cats=['Взнос собственника','Выдача займа','Возврат займа','Оплата по договору','Другое перемещение'];else if(type==='cash_transfer')cats=['Инкассация'];else if(type!=='transfer')cats=S.categories.bizOut;
+  if(type==='in')cats=S.categories.in;else if(type==='out')cats=S.categories.out;else if(type==='draw')cats=['Вывод собственнику','Возмещение личных расходов'];else if(type==='contribution')cats=['Взнос собственника'];else if(type==='biz_income')cats=S.categories.bizIn;else if(type==='entity_transfer')cats=['Взнос собственника','Выдача займа','Возврат займа','Оплата по договору','Другое перемещение'];else if(type==='cash_transfer')cats=['Инкассация'];else if(type==='personal_biz_expense')cats=S.categories.bizOut;else if(type!=='transfer')cats=S.categories.bizOut;
   catSel.innerHTML=cats.map(c=>'<option>'+esc(c)+'</option>').join('');
   const ex={
     in:'Личный счёт увеличится. Это личный доход.',out:'Личный счёт уменьшится. Это личный расход.',
@@ -1019,7 +1058,8 @@ function refreshAddForm(){
     draw:'Деньги спишутся из выбранного канала бизнеса и поступят на личный счёт. Это не расход бизнеса и не личный доход в обычной аналитике.',
     contribution:'Деньги спишутся с личного счёта и поступят в выбранный канал бизнеса. Это не личный расход и не выручка бизнеса.',
     biz_income:method==='cash'?'Выручка увеличит наличные выбранной студии и общую кассу.':'Выручка увеличит банковский счёт соответствующего юрлица и безналичный остаток точки.',
-    biz_expense:method==='cash'?'Расход уменьшит наличные выбранной студии и общую кассу.':'Расход уменьшит банковский счёт соответствующего юрлица и безналичный остаток точки.'};
+    biz_expense:method==='cash'?'Расход уменьшит наличные выбранной студии и общую кассу.':'Расход уменьшит банковский счёт соответствующего юрлица и безналичный остаток точки.',
+    personal_biz_expense:'Личная карта уменьшится на общую сумму. Расход попадёт в прибыль выбранных точек, но их банковские счета и касса не изменятся. При выборе возмещения приложение создаст долги ИП и ООО перед вами.'};
   document.getElementById('f-explain').textContent=ex[type]||'';
   updateAmountCurrencyLabel();if(isAccountMove)updateTransferPreview();
 }
@@ -1045,7 +1085,7 @@ function updateAmountCurrencyLabel(){
   const type=document.getElementById('f-type').value;let code=baseCode();
   if(type==='transfer'||type==='entity_transfer'||type==='cash_transfer'){const a=accById(mval('f-from-acc'));if(a)code=a.currency;}
   else if(['biz_income','biz_expense'].includes(type)){const a=accById(mval('f-biz-acc'));if(a)code=a.currency;}
-  else if(['in','out','draw','contribution'].includes(type)){const a=accById(mval('f-acc'));if(a)code=a.currency;}
+  else if(['in','out','draw','contribution','personal_biz_expense'].includes(type)){const a=accById(mval('f-acc'));if(a)code=a.currency;}
   document.getElementById('f-amount-lbl').textContent='Сумма ('+sym(code)+')';
 }
 
@@ -1054,27 +1094,31 @@ function updateAmountCurrencyLabel(){
    ========================================================= */
 const TYPE_META={
   in:{n:"Доход",c:"c-in"}, out:{n:"Расход",c:"c-out"}, draw:{n:"Вывод",c:"c-draw"},
-  contribution:{n:"Возврат в бизнес",c:"c-contribution"}, biz_income:{n:"Доход бизнеса",c:"c-biz_income"}, biz_expense:{n:"Расход бизнеса",c:"c-biz_expense"},
+  contribution:{n:"Возврат в бизнес",c:"c-contribution"}, biz_income:{n:"Доход бизнеса",c:"c-biz_income"}, biz_expense:{n:"Расход бизнеса",c:"c-biz_expense"}, personal_biz_expense:{n:"Оплачено лично",c:"c-biz_expense"},
   transfer:{n:"Перевод",c:"c-transfer"}, entity_transfer:{n:"Между юрлицами",c:"c-transfer"}, cash_transfer:{n:"Инкассация",c:"c-transfer"},
+  debt_issue:{n:"Выдано в долг",c:"c-out"}, debt_borrow:{n:"Получен займ",c:"c-in"}, debt_repayment_in:{n:"Возврат долга",c:"c-in"}, debt_repayment_out:{n:"Погашение долга",c:"c-out"},
   account_adjustment:{n:"Корректировка счёта",c:"c-adjustment"}, biz_adjustment:{n:"Корректировка наличных",c:"c-adjustment"}
 };
 function viewTx(){
   const f=S.ui.txFilter, p=S.ui.txPeriod;
   let list=[...(S.tx||[])].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-  if(f==="adjustments")list=list.filter(t=>t.type==="account_adjustment"||t.type==="biz_adjustment");else if(f!=="all")list=list.filter(t=>t.type===f);
+  if(f==="adjustments")list=list.filter(t=>t.type==="account_adjustment"||t.type==="biz_adjustment");else if(f==="debt_moves")list=list.filter(t=>String(t.type).startsWith("debt_"));else if(f!=="all")list=list.filter(t=>t.type===f);
   if(p==="month")list=list.filter(t=>inThisMonth(t.date));
   const filterBtn=(id,lbl)=>'<button class="btn sm '+(f===id?'primary':'')+'" data-act="tx-filter" data-f="'+id+'">'+lbl+'</button>';
   const rows=list.map(t=>{
-    const m=TYPE_META[t.type]||{n:t.type,c:"c-adjustment"}, b=t.biz?bizById(t.biz):null;
+    const m=t.type==="draw"&&t.cat==="Возмещение личных расходов"?{n:"Возмещение",c:"c-transfer"}:(TYPE_META[t.type]||{n:t.type,c:"c-adjustment"}), b=t.biz?bizById(t.biz):null;
     const acc=t.account?accById(t.account):null, bacc=t.businessAccount?accById(t.businessAccount):null;
     const fromAcc=t.fromAccount?accById(t.fromAccount):null,toAcc=t.toAccount?accById(t.toAccount):null;
     const isTransfer=t.type==="transfer"||t.type==="entity_transfer"||t.type==="cash_transfer",isAdj=t.type==="account_adjustment"||t.type==="biz_adjustment";
     const code=isTransfer?(fromAcc?.currency||baseCode()):(acc?.currency||bacc?.currency||baseCode());
     const delta=isAdj?(Number(t.delta)||0):0,shownAmount=isAdj?Math.abs(delta):t.amount;
-    const sign=isAdj?(delta>0?"+":delta<0?"−":""):(t.type==="out"||t.type==="contribution"||t.type==="biz_expense"?"−":(t.type==="draw"?"":"+"));
-    const amtCls=isTransfer?"blue":(isAdj?(delta>=0?"pos":"neg"):(t.type==="draw"?"amber":((t.type==="in"||t.type==="biz_income")?"pos":"neg")));
+    const sign=isAdj?(delta>0?"+":delta<0?"−":""):(t.type==="out"||t.type==="contribution"||t.type==="biz_expense"||t.type==="personal_biz_expense"||t.type==="debt_issue"||t.type==="debt_repayment_out"?"−":(t.type==="draw"?"":"+"));
+    const amtCls=isTransfer?"blue":(isAdj?(delta>=0?"pos":"neg"):(t.type==="draw"?"amber":((["in","biz_income","debt_borrow","debt_repayment_in"].includes(t.type))?"pos":"neg")));
     const pay=t.biz&&['biz_income','biz_expense','draw','contribution'].includes(t.type)?(txPaymentMethod(t)==='cash'?' · наличные':' · безналичные'):'';
-    const details='<span class="tag-cat">'+esc(t.cat||"—")+'</span>'+(b?' <span class="fs12 muted">'+b.emoji+' '+esc(b.name)+' · '+esc(entityById(b.legalEntityId)?.name||'')+pay+'</span>':'')+(t.note?'<div class="fs12 muted" style="margin-top:2px">'+esc(t.note)+'</div>':'');
+    const allocText=t.type==='personal_biz_expense'?(t.allocations||[]).map(x=>{const pb=bizById(x.biz);return pb?pb.emoji+' '+esc(pb.name)+' '+fmt(x.amount,false,acc?.currency||baseCode()):'';}).filter(Boolean).join(' · '):'';
+    const settlementText=t.type==='personal_biz_expense'?(t.settlement==='reimburse'?' · к возмещению':' · взнос собственника'):'';
+    const debt=t.debtId?(S.debts||[]).find(d=>d.id===t.debtId):null,debtText=debt?'<div class="fs12 muted" style="margin-top:3px">'+esc(debt.who)+' · '+fmt(t.debtAmount||0,false,debtCurrency(debt))+'</div>':'';
+    const details='<span class="tag-cat">'+esc(t.cat||"—")+'</span>'+(b?' <span class="fs12 muted">'+b.emoji+' '+esc(b.name)+' · '+esc(entityById(b.legalEntityId)?.name||'')+pay+'</span>':'')+(allocText?'<div class="fs12 muted" style="margin-top:3px">'+allocText+settlementText+'</div>':'')+debtText+(t.note?'<div class="fs12 muted" style="margin-top:2px">'+esc(t.note)+'</div>':'');
     let accountHtml='—';
     if(isTransfer)accountHtml=fromAcc&&toAcc?fromAcc.emoji+' '+esc(fromAcc.name)+' → '+toAcc.emoji+' '+esc(toAcc.name):'счёт удалён';
     else if(t.type==='draw'||t.type==='contribution')accountHtml=(bacc?bacc.emoji+' '+esc(bacc.name):'счёт бизнеса')+(t.type==='draw'?' → ':' ← ')+(acc?acc.emoji+' '+esc(acc.name):'личный счёт');
@@ -1083,7 +1127,7 @@ function viewTx(){
     return '<tr><td class="mono fs12 muted" data-label="Дата">'+fmtDate(t.date)+'</td><td data-label="Тип"><span class="chip '+m.c+'"><span class="d" style="background:currentColor"></span>'+m.n+'</span></td><td data-label="Детали">'+details+'</td><td class="fs12 muted" data-label="Счёт">'+accountHtml+'</td><td class="num '+amtCls+'" data-label="Сумма" style="font-weight:600">'+amountHtml+'</td><td class="num no-label"><button class="x-btn" data-act="del-tx" data-id="'+t.id+'" title="Удалить">'+svg(I.trash,'')+'</button></td></tr>';
   }).join('');
   const body=list.length?'<table><thead><tr><th>Дата</th><th>Тип</th><th>Категория / точка</th><th>Счёт</th><th class="num">Сумма</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="empty">'+svg(I.tx)+'<b>Операций пока нет</b><span class="fs13">Добавьте первую запись.</span></div>';
-  return head("Операции",list.length+" записей")+'<div class="filters">'+filterBtn("all","Все")+filterBtn("in","Доходы")+filterBtn("out","Расходы")+filterBtn("transfer","Переводы")+filterBtn("entity_transfer","Между юрлицами")+filterBtn("cash_transfer","Инкассация")+filterBtn("draw","Выводы")+filterBtn("contribution","Взносы")+filterBtn("biz_income","Доход бизнеса")+filterBtn("biz_expense","Расход бизнеса")+filterBtn("adjustments","Корректировки")+'<span class="spacer"></span><div class="seg"><button class="'+(p==="all"?"on":"")+'" data-act="tx-period" data-p="all">За всё время</button><button class="'+(p==="month"?"on":"")+'" data-act="tx-period" data-p="month">Этот месяц</button></div><button class="btn primary sm" data-act="nav" data-v="add">'+svg(I.add)+'Добавить</button></div><div class="card">'+body+'</div>';
+  return head("Операции",list.length+" записей")+'<div class="filters">'+filterBtn("all","Все")+filterBtn("in","Доходы")+filterBtn("out","Расходы")+filterBtn("transfer","Переводы")+filterBtn("entity_transfer","Между юрлицами")+filterBtn("cash_transfer","Инкассация")+filterBtn("draw","Выводы")+filterBtn("contribution","Взносы")+filterBtn("biz_income","Доход бизнеса")+filterBtn("biz_expense","Расход бизнеса")+filterBtn("personal_biz_expense","Оплачено лично")+filterBtn("debt_moves","Долги")+filterBtn("adjustments","Корректировки")+'<span class="spacer"></span><div class="seg"><button class="'+(p==="all"?"on":"")+'" data-act="tx-period" data-p="all">За всё время</button><button class="'+(p==="month"?"on":"")+'" data-act="tx-period" data-p="month">Этот месяц</button></div><button class="btn primary sm" data-act="nav" data-v="add">'+svg(I.add)+'Добавить</button></div><div class="card">'+body+'</div>';
 }
 
 /* =========================================================
@@ -1098,8 +1142,8 @@ function dueLabel(due){
   return {txt:"до "+fmtDate(due),cls:""};
 }
 function debtCard(d){
-  const rem=debtRemaining(d); const paid=d.amount-rem;
-  const p=Math.min(100,Math.round(paid/d.amount*100));
+  const rem=debtRemaining(d); const paid=(Number(d.amount)||0)-rem,code=debtCurrency(d);
+  const p=Math.min(100,Math.round(paid/(Number(d.amount)||1)*100));
   const dd=dueLabel(d.due);
   const color=d.dir==="in"?"var(--asset)":"var(--liab)";
   const bg=d.dir==="in"?"var(--asset-bg)":"var(--liab-bg)";
@@ -1108,10 +1152,10 @@ function debtCard(d){
       '<div class="avatar" style="background:'+bg+';color:'+color+'">'+(d.who[0]||"?").toUpperCase()+'</div>'+
       '<div style="flex:1;min-width:0">'+
         '<div style="font-weight:600;font-family:var(--disp)">'+esc(d.who)+'</div>'+
-        '<div class="fs12 muted">'+(d.note?esc(d.note)+" · ":"")+'выдан '+fmtDate(d.date)+' · <span class="'+dd.cls+'">'+dd.txt+'</span></div>'+
+        '<div class="fs12 muted">'+(d.note?esc(d.note)+" · ":"")+(d.kind==="owner_reimbursement"?"оплачено ":(d.dir==="in"?"выдано ":"получено "))+fmtDate(d.date)+' · <span class="'+dd.cls+'">'+dd.txt+'</span></div>'+
       '</div>'+
-      '<div style="text-align:right"><div class="num" style="font-weight:700;font-size:16px;color:'+color+'">'+fmt(rem)+'</div>'+
-      (paid>0?'<div class="fs12 muted num">из '+fmt(d.amount)+'</div>':'')+'</div>'+
+      '<div style="text-align:right"><div class="num" style="font-weight:700;font-size:16px;color:'+color+'">'+fmt(rem,false,code)+'</div>'+
+      (paid>0?'<div class="fs12 muted num">из '+fmt(d.amount,false,code)+'</div>':'')+'</div>'+
     '</div>'+
     (paid>0?'<div class="prog" style="margin-top:10px"><span style="width:'+p+'%;background:'+color+'"></span></div>':'')+
     '<div style="display:flex;gap:8px;margin-top:11px">'+
@@ -1126,7 +1170,7 @@ function viewDebts(){
   const outD=S.debts.filter(d=>d.dir==="out");
   const colIn=inD.length?inD.map(debtCard).join(""):'<div class="empty" style="padding:26px"><b>Вам никто не должен</b></div>';
   const colOut=outD.length?outD.map(debtCard).join(""):'<div class="empty" style="padding:26px"><b>У вас нет долгов</b></div>';
-  return head("Долги и кредиты","Кто должен вам и кому должны вы. Отмечайте частичные возвраты — прогноз обновится сам.")+
+  return head("Долги и кредиты","Каждый долг хранится в своей валюте. Общие итоги пересчитываются в "+baseCode()+" по текущим курсам.")+
   '<div style="display:flex;gap:10px;margin-bottom:16px"><button class="btn primary" data-act="add-debt" data-dir="in">'+svg(I.add)+'Мне должны</button><button class="btn" data-act="add-debt" data-dir="out">'+svg(I.add)+'Я должен</button></div>'+
   '<div class="two">'+
     '<div><div class="eyebrow" style="margin-bottom:10px;color:var(--asset)">← МНЕ ДОЛЖНЫ · '+fmt(owedToMe())+'</div>'+colIn+'</div>'+
@@ -1178,7 +1222,7 @@ function viewForecast(){
     // плановые движения долгов в этом месяце
     let debtFlow=0;
     for(const d of S.debts){ const rem=debtRemaining(d); if(rem<=0||!d.due)continue;
-      if(monthKey(d.due)===key){ debtFlow+= d.dir==="in"?rem:-rem; }
+      if(monthKey(d.due)===key){ const baseRem=toBase(rem,debtCurrency(d));debtFlow+= d.dir==="in"?baseRem:-baseRem; }
     }
     run=run+avg+debtFlow;
     pts.push({label:md.toLocaleDateString("ru-RU",{month:"short"}),val:run});
@@ -1188,7 +1232,7 @@ function viewForecast(){
   // таблица предстоящих движений по долгам
   const debtRows=S.debts.map(d=>({d,rem:debtRemaining(d)})).filter(x=>x.rem>0&&x.d.due)
     .sort((a,b)=>a.d.due.localeCompare(b.d.due))
-    .map(({d,rem})=>{const dd=dueLabel(d.due);return '<tr><td data-label="Контрагент">'+esc(d.who)+'</td><td data-label="Тип"><span class="chip '+(d.dir==="in"?"c-biz_income":"c-out")+'">'+(d.dir==="in"?"поступление":"платёж")+'</span></td><td class="fs13 '+dd.cls+'" data-label="Срок">'+fmtDate(d.due)+' · '+dd.txt+'</td><td class="num '+(d.dir==="in"?"blue":"neg")+'" data-label="Сумма" style="font-weight:600">'+(d.dir==="in"?"+":"−")+fmt(rem).replace("−","")+'</td></tr>';}).join("");
+    .map(({d,rem})=>{const dd=dueLabel(d.due);return '<tr><td data-label="Контрагент">'+esc(d.who)+'</td><td data-label="Тип"><span class="chip '+(d.dir==="in"?"c-biz_income":"c-out")+'">'+(d.dir==="in"?"поступление":"платёж")+'</span></td><td class="fs13 '+dd.cls+'" data-label="Срок">'+fmtDate(d.due)+' · '+dd.txt+'</td><td class="num '+(d.dir==="in"?"blue":"neg")+'" data-label="Сумма" style="font-weight:600">'+(d.dir==="in"?"+":"−")+fmt(rem,false,debtCurrency(d)).replace("−","")+'</td></tr>';}).join("");
 
   const in1=pb+avg, in3=pb+avg*3, in6=run;
   return head("Прогноз","Оценка будущего баланса по вашим средним показателям и запланированным возвратам долгов.")+
@@ -1413,14 +1457,42 @@ function accForm(a){
     '<div class="field"><label>Значок</label><input class="inp" id="ac-emoji" value="'+esc(a.emoji||'💳')+'" maxlength="2"></div>'+
     '<div class="field"><label>Доступен точкам бизнеса</label><div style="max-height:190px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:7px 12px">'+(pointChecks||'<span class="muted fs13">Сначала добавьте точки</span>')+'</div><div class="hint">'+(a.sharedCash?'Общая касса может быть связана со студиями разных юрлиц.':'Для банковского счёта будут сохранены только точки выбранного юрлица.')+'</div></div>';
 }
-function debtForm(d){
-  d=d||{dir:"in",who:"",amount:"",date:TODAY(),due:daysAhead(30),note:""};
-  return '<div class="field"><label>Направление</label><select class="inp" id="d-dir"><option value="in" '+(d.dir==="in"?"selected":"")+'>Мне должны (актив)</option><option value="out" '+(d.dir==="out"?"selected":"")+'>Я должен (обязательство)</option></select></div>'+
+function debtForm(d,editing=false){
+  d=d||{dir:"in",who:"",amount:"",currency:baseCode(),date:TODAY(),due:daysAhead(30),note:""};
+  return '<div class="field"><label>Направление</label><select class="inp" id="d-dir" '+(editing?'disabled':'')+'><option value="in" '+(d.dir==="in"?"selected":"")+'>Мне должны (актив)</option><option value="out" '+(d.dir==="out"?"selected":"")+'>Я должен (обязательство)</option></select></div>'+
     '<div class="field"><label>Кто / название</label><input class="inp" id="d-who" value="'+esc(d.who)+'" placeholder="Имя человека или банк"></div>'+
-    '<div class="row2"><div class="field"><label>Сумма</label><input class="inp mono" id="d-amount" type="number" step="0.01" value="'+(d.amount||"")+'"></div>'+
-    '<div class="field"><label>Дата выдачи</label><input class="inp" id="d-date" type="date" value="'+(d.date||TODAY())+'"></div></div>'+
-    '<div class="field"><label>Срок возврата</label><input class="inp" id="d-due" type="date" value="'+(d.due||"")+'"></div>'+
-    '<div class="field"><label>Комментарий</label><input class="inp" id="d-note" value="'+esc(d.note||"")+'"></div>';
+    '<div class="row2"><div class="field"><label>Сумма</label><input class="inp mono" id="d-amount" type="number" step="0.01" value="'+(d.amount||"")+'" '+(editing?'disabled':'')+'></div>'+
+    '<div class="field"><label>Валюта долга</label><select class="inp" id="d-currency" '+(editing?'disabled':'')+'>'+(S.currencies||[]).map(c=>'<option value="'+c.code+'" '+((d.currency||baseCode())===c.code?'selected':'')+'>'+c.code+' · '+esc(c.symbol)+'</option>').join('')+'</select></div></div>'+
+    '<div class="row2"><div class="field"><label>Дата выдачи / получения</label><input class="inp" id="d-date" type="date" value="'+(d.date||TODAY())+'" '+(editing?'disabled':'')+'></div><div class="field"><label>Срок возврата</label><input class="inp" id="d-due" type="date" value="'+(d.due||"")+'"></div></div>'+
+    '<div class="field"><label>Комментарий</label><input class="inp" id="d-note" value="'+esc(d.note||"")+'"></div>'+ 
+    (editing?'<div class="fs12 muted">Сумма и валюта относятся к обязательству. Ранее созданные движения по счетам при редактировании не меняются.</div>':'<label class="fs13" style="display:flex;align-items:center;gap:9px;margin:4px 0 12px"><input type="checkbox" id="d-move" '+(personalAccounts().length?'checked':'')+'> Учесть выдачу или получение денег по личному счёту</label><div id="d-move-wrap"><div class="row2"><div class="field"><label>Личный счёт</label><select class="inp" id="d-account">'+selectOptions(personalAccounts(),'Нет активных личных счетов')+'</select></div><div class="field"><label id="d-account-amount-label">Сумма по счёту</label><input class="inp mono" id="d-account-amount" type="number" min="0" step="0.01"></div></div><div class="hint" id="d-move-hint"></div></div>');
+}
+function convertedAmount(amount,fromCode,toCode){return fromCode===toCode?(Number(amount)||0):toBase(amount,fromCode)/rate(toCode);}
+function updateDebtMoveForm(force=false){
+  const wrap=document.getElementById('d-move-wrap'),check=document.getElementById('d-move');if(!wrap||!check)return;
+  wrap.classList.toggle('hidden',!check.checked);if(!check.checked)return;
+  const acc=accById(mval('d-account')),out=document.getElementById('d-account-amount'),hint=document.getElementById('d-move-hint'),dir=mval('d-dir')||'in',debtCode=mval('d-currency')||baseCode(),amt=Number(mval('d-amount'))||0,accountCode=acc?.currency||baseCode();
+  if(out&&(force||out.dataset.manual!=='1'))out.value=amt?convertedAmount(amt,debtCode,accountCode).toFixed(2):'';
+  const label=document.getElementById('d-account-amount-label');if(label)label.textContent=(dir==='in'?'Сколько списать со счёта':'Сколько зачислить на счёт')+' ('+sym(accountCode)+')';
+  if(hint)hint.textContent=(dir==='in'?'Выдача долга уменьшит выбранный счёт.':'Получение займа увеличит выбранный счёт.')+(debtCode!==accountCode?' Долг останется в '+debtCode+', а фактическая сумма по счёту фиксируется отдельно.':'');
+}
+function debtMovementFromForm(){
+  if(!document.getElementById('d-move')?.checked)return null;
+  const account=accById(mval('d-account')),amount=Number(mval('d-account-amount'))||0;
+  if(!account||!isPersonalAccount(account)||account.archived||amount<=0)return null;
+  return {account,amount};
+}
+function repayMoveHtml(d){
+  if(d.kind==='owner_reimbursement')return '<div class="fs12 muted">Возврат по этому долгу проведите операцией «Вывод из бизнеса» с категорией «Возмещение личных расходов», затем отметьте здесь погашенную сумму.</div>';
+  return '<label class="fs13" style="display:flex;align-items:center;gap:9px;margin:4px 0 12px"><input type="checkbox" id="r-move" '+(personalAccounts().length?'checked':'')+'> Учесть движение по личному счёту</label><div id="r-move-wrap"><div class="row2"><div class="field"><label>Личный счёт</label><select class="inp" id="r-account">'+selectOptions(personalAccounts(),'Нет активных личных счетов')+'</select></div><div class="field"><label id="r-account-amount-label">Сумма по счёту</label><input class="inp mono" id="r-account-amount" type="number" min="0" step="0.01"></div></div><div class="hint" id="r-move-hint"></div></div>';
+}
+function updateRepayMoveForm(d,force=false){
+  const check=document.getElementById('r-move'),wrap=document.getElementById('r-move-wrap');if(!check||!wrap)return;
+  wrap.classList.toggle('hidden',!check.checked);if(!check.checked)return;
+  const acc=accById(mval('r-account')),out=document.getElementById('r-account-amount'),debtAmt=Number(mval('r-amt'))||0,accountCode=acc?.currency||baseCode(),debtCode=debtCurrency(d);
+  if(out&&(force||out.dataset.manual!=='1'))out.value=debtAmt?convertedAmount(debtAmt,debtCode,accountCode).toFixed(2):'';
+  const label=document.getElementById('r-account-amount-label');if(label)label.textContent=(d.dir==='in'?'Сколько зачислить на счёт':'Сколько списать со счёта')+' ('+sym(accountCode)+')';
+  const hint=document.getElementById('r-move-hint');if(hint)hint.textContent=(d.dir==='in'?'Возврат вам увеличит выбранный счёт.':'Ваш платёж уменьшит выбранный счёт.')+(debtCode!==accountCode?' Погашение отмечается в '+debtCode+', движение фиксируется в '+accountCode+'.':'');
 }
 function goalForm(g){
   g=g||{name:"",target:"",saved:0,due:daysAhead(180),note:""};
@@ -1460,30 +1532,35 @@ document.addEventListener("click",e=>{
     refreshAddForm();return;
   }
   if(act==="save-tx"){saveTx();return;}
+  if(act==="split-pbe"){document.querySelectorAll(".pbe-amount").forEach(x=>delete x.dataset.manual);distributePbe();return;}
 
   // tx list
   if(act==="tx-filter"){S.ui.txFilter=el.dataset.f;render();return;}
   if(act==="tx-period"){S.ui.txPeriod=el.dataset.p;render();return;}
-  if(act==="del-tx"){S.tx=S.tx.filter(t=>t.id!==el.dataset.id);persist();render();toast("Операция удалена");return;}
+  if(act==="del-tx"){const tx=S.tx.find(t=>t.id===el.dataset.id);if(tx?.debtId&&String(tx.type).startsWith("debt_")){toast("Движения по долгам удаляются вместе с долгом в разделе «Долги»");return;}if(tx?.debtIds?.length)S.debts=S.debts.filter(d=>!tx.debtIds.includes(d.id));S.tx=S.tx.filter(t=>t.id!==el.dataset.id);persist();render();toast("Операция удалена");return;}
 
   // debts
   if(act==="add-debt"){openModal("Новый долг",debtForm({dir:el.dataset.dir,date:TODAY(),due:daysAhead(30)}),()=>{
-    const who=mval("d-who").trim(); const amt=+mval("d-amount");
+    const who=mval("d-who").trim(),amt=+mval("d-amount"),dir=mval("d-dir"),currency=mval("d-currency")||baseCode();
     if(!who||!amt){toast("Заполните имя и сумму");return false;}
-    S.debts.push({id:uid(),dir:mval("d-dir"),who,amount:amt,date:mval("d-date"),due:mval("d-due"),note:mval("d-note"),repaid:[]});
-    persist();render();toast("Долг добавлен");
-  });return;}
-  if(act==="edit-debt"){const d=S.debts.find(x=>x.id===el.dataset.id);openModal("Изменить долг",debtForm(d),()=>{
-    d.dir=mval("d-dir");d.who=mval("d-who").trim();d.amount=+mval("d-amount");d.date=mval("d-date");d.due=mval("d-due");d.note=mval("d-note");
+    const move=debtMovementFromForm();if(document.getElementById('d-move')?.checked&&!move){toast("Выберите личный счёт и сумму движения");return false;}
+    const id=uid(),debt={id,dir,who,amount:amt,currency,date:mval("d-date"),due:mval("d-due"),note:mval("d-note"),repaid:[]};S.debts.push(debt);
+    if(move)S.tx.push({id:uid(),type:dir==="in"?"debt_issue":"debt_borrow",account:move.account.id,amount:move.amount,debtAmount:amt,debtId:id,cat:dir==="in"?"Выдача долга":"Получение займа",date:debt.date,note:who});
+    S.meta.lastEntryDate=TODAY();persist();render();toast("Долг добавлен");
+  });setTimeout(()=>updateDebtMoveForm(true),0);return;}
+  if(act==="edit-debt"){const d=S.debts.find(x=>x.id===el.dataset.id);openModal("Изменить долг",debtForm(d,true),()=>{
+    d.dir=mval("d-dir");d.who=mval("d-who").trim();d.amount=+mval("d-amount");d.currency=mval("d-currency")||baseCode();d.date=mval("d-date");d.due=mval("d-due");d.note=mval("d-note");
     persist();render();toast("Сохранено");
   });return;}
-  if(act==="del-debt"){S.debts=S.debts.filter(d=>d.id!==el.dataset.id);persist();render();toast("Долг удалён");return;}
-  if(act==="repay"){const d=S.debts.find(x=>x.id===el.dataset.id);const rem=debtRemaining(d);
+  if(act==="del-debt"){S.tx=S.tx.filter(t=>t.debtId!==el.dataset.id);S.debts=S.debts.filter(d=>d.id!==el.dataset.id);persist();render();toast("Долг и связанные движения удалены");return;}
+  if(act==="repay"){const d=S.debts.find(x=>x.id===el.dataset.id),rem=debtRemaining(d);window.__currentRepayDebt=d;
     openModal(d.dir==="in"?"Отметить возврат":"Отметить платёж",
-      '<div class="field"><label>Сумма (осталось '+fmt(rem)+')</label><input class="inp mono" id="r-amt" type="number" step="0.01" value="'+rem+'" max="'+rem+'"></div>'+
-      '<div class="field"><label>Дата</label><input class="inp" id="r-date" type="date" value="'+TODAY()+'"></div>',
-      ()=>{const a=+mval("r-amt");if(!a){toast("Введите сумму");return false;}d.repaid=d.repaid||[];d.repaid.push({amount:Math.min(a,rem),date:mval("r-date")});persist();render();toast("Отмечено");});
-    return;}
+      '<div class="field"><label>Сумма (осталось '+fmt(rem,false,debtCurrency(d))+')</label><input class="inp mono" id="r-amt" type="number" step="0.01" value="'+rem+'" max="'+rem+'"></div>'+ 
+      '<div class="field"><label>Дата</label><input class="inp" id="r-date" type="date" value="'+TODAY()+'"></div>'+repayMoveHtml(d),
+      ()=>{const debtAmount=Math.min(+mval("r-amt")||0,rem);if(!debtAmount){toast("Введите сумму");return false;}let txId=null;
+        if(document.getElementById('r-move')?.checked){const account=accById(mval('r-account')),accountAmount=Number(mval('r-account-amount'))||0;if(!account||!isPersonalAccount(account)||account.archived||accountAmount<=0){toast("Выберите личный счёт и сумму движения");return false;}txId=uid();S.tx.push({id:txId,type:d.dir==='in'?'debt_repayment_in':'debt_repayment_out',account:account.id,amount:accountAmount,debtAmount,debtId:d.id,cat:d.dir==='in'?'Возврат выданного долга':'Погашение займа',date:mval('r-date'),note:d.who});}
+        d.repaid=d.repaid||[];d.repaid.push({amount:debtAmount,date:mval("r-date"),txId});S.meta.lastEntryDate=TODAY();persist();render();toast("Отмечено");});
+    setTimeout(()=>updateRepayMoveForm(d,true),0);return;}
 
   // legal entities
   if(act==="add-entity"){openModal("Новое юридическое лицо",legalEntityForm(),()=>{const name=mval("le-name").trim();if(!name){toast("Введите название");return false;}S.legalEntities.push({id:uid(),name,type:mval("le-type"),archived:false});persist();render();toast("Юрлицо добавлено");});return;}
@@ -1511,7 +1588,7 @@ document.addEventListener("click",e=>{
     S.currencies.push({code,symbol:symb,rate:r});persist();render();toast("Валюта добавлена");return;}
   if(act==="del-cur"){const c=S.currencies[+el.dataset.i];
     if(c.code===baseCode()){toast("Нельзя удалить базовую валюту");return;}
-    if(S.accounts.some(a=>a.currency===c.code)){toast("Есть счета в этой валюте — сначала измените их");return;}
+    if(S.accounts.some(a=>a.currency===c.code)||S.debts.some(d=>debtCurrency(d)===c.code)){toast("Валюта используется в счетах или долгах — сначала измените их");return;}
     S.currencies.splice(+el.dataset.i,1);persist();render();return;}
   if(act==="save-base"){const nb=mval("s-base");if(nb){S.settings.baseCurrency=nb;const bc=curObj(nb);if(bc)bc.rate=1;}persist();render();toast("Базовая валюта обновлена");updateRatesFromNBRB().then(ok=>{if(ok){render();toast("Курсы НБРБ обновлены");}});return;}
 
@@ -1569,6 +1646,20 @@ function saveTx(){
     S.tx.push({id:uid(),type,biz:biz?.id,fromAccount:from.id,toAccount:to.id,amount,toAmount,cat:type==="transfer"?"Перевод между счетами":type==="cash_transfer"?"Инкассация":mval("f-cat"),date,note,rateFrom:rate(from.currency),rateTo:rate(to.currency)});
     S.meta.lastEntryDate=TODAY();persist();toast("Перемещение сохранено · "+fmt(amount,false,from.currency));S.ui.view="tx";render();return;
   }
+  if(type==="personal_biz_expense"){
+    const pa=accById(mval("f-acc"));if(!pa||pa.archived||!isPersonalAccount(pa)){toast("Добавьте и выберите личный счёт");return;}
+    const allocations=selectedPbeAllocations(),allocated=allocations.reduce((s,a)=>s+a.amount,0);
+    if(!allocations.length){toast("Выберите хотя бы одну точку бизнеса");return;}
+    if(Math.abs(allocated-amount)>0.01){toast("Распределённая сумма должна совпадать с общей");return;}
+    const settlement=mval("f-pbe-settlement")||"reimburse",id=uid(),debtIds=[];
+    const t={id,type,account:pa.id,amount,allocations,settlement,cat:mval("f-cat"),date,note};
+    if(settlement==="reimburse"){
+      const byEntity={};for(const a of allocations){const b=bizById(a.biz);if(!b)continue;byEntity[b.legalEntityId]=(byEntity[b.legalEntityId]||0)+a.amount;}
+      for(const [legalEntityId,sum] of Object.entries(byEntity)){const entity=entityById(legalEntityId),did=uid();debtIds.push(did);S.debts.push({id:did,dir:"in",who:(entity?.name||"Бизнес")+" · возмещение личных расходов",amount:sum,currency:pa.currency,date,due:mval("f-pbe-due"),note:"Личная оплата: "+(mval("f-cat")||"Расход бизнеса")+(note?" · "+note:""),repaid:[],kind:"owner_reimbursement",legalEntityId,sourceTxId:id});}
+      t.debtIds=debtIds;
+    }
+    S.tx.push(t);S.meta.lastEntryDate=TODAY();persist();toast("Личная оплата распределена · "+fmt(amount,false,pa.currency));S.ui.view="tx";render();return;
+  }
   const t={id:uid(),type,amount,cat:mval("f-cat"),date,note};
   if(["draw","contribution","biz_income","biz_expense"].includes(type)){
     t.biz=mval("f-biz");const b=bizById(t.biz),paymentMethod=selectedPaymentMethod(),ba=accById(mval("f-biz-acc"));
@@ -1605,17 +1696,30 @@ function importJSON(){
 /* обновление формы добавления при вводе */
 document.addEventListener("change",e=>{
   if(e.target.id==="f-type")refreshAddForm();
-  if(e.target.id==="f-acc"||e.target.id==="f-biz-acc")updateAmountCurrencyLabel();
+  if(e.target.id==="f-acc"||e.target.id==="f-biz-acc"){updateAmountCurrencyLabel();if(document.getElementById("f-type")?.value==="personal_biz_expense")updatePbeSummary();}
   if(e.target.id==="f-payment")refreshAddForm();
   if(e.target.id==="f-biz")refreshAddForm();
   if(e.target.id==="f-from-acc"||e.target.id==="f-to-acc"){ensureTransferAccounts();updateAmountCurrencyLabel();updateTransferPreview();}
+  if(e.target.classList?.contains("pbe-check")){document.querySelectorAll(".pbe-amount").forEach(x=>delete x.dataset.manual);distributePbe();}
+  if(e.target.id==="f-pbe-settlement")updatePbeSettlement();
+  if(["d-dir","d-currency","d-account","d-move"].includes(e.target.id))updateDebtMoveForm(true);
+  if(["r-account","r-move"].includes(e.target.id)&&window.__currentRepayDebt)updateRepayMoveForm(window.__currentRepayDebt,true);
   if(e.target.dataset&&e.target.dataset.act==="rate-input"){
     const c=curObj(e.target.dataset.code);if(c){c.rate=+e.target.value||1;persist();render();}
   }
 });
 
 document.addEventListener("input",e=>{
-  if(e.target.id==="f-amount"&&["transfer","entity_transfer","cash_transfer"].includes(document.getElementById("f-type")?.value))updateTransferPreview();
+  const type=document.getElementById("f-type")?.value;
+  if(e.target.id==="f-amount"&&["transfer","entity_transfer","cash_transfer"].includes(type))updateTransferPreview();
+  if(e.target.id==="f-amount"&&type==="personal_biz_expense"){
+    const manual=[...document.querySelectorAll('.pbe-amount')].some(x=>x.dataset.manual==='1');if(manual)updatePbeSummary();else distributePbe();
+  }
+  if(e.target.classList?.contains("pbe-amount")){e.target.dataset.manual='1';updatePbeSummary();}
+  if(e.target.id==="d-amount")updateDebtMoveForm(false);
+  if(e.target.id==="d-account-amount")e.target.dataset.manual='1';
+  if(e.target.id==="r-amt"&&window.__currentRepayDebt)updateRepayMoveForm(window.__currentRepayDebt,false);
+  if(e.target.id==="r-account-amount")e.target.dataset.manual='1';
 });
 
 /* =========================================================
@@ -1716,7 +1820,9 @@ function ensureBusinessModel(){
     }
     if(t.type==='biz_adjustment'&&t.paymentMethod==='cash'&&t.account!==cash.id){t.account=cash.id;changed=true;}
   }
-  S.meta=S.meta||{};if((S.meta.modelVersion||0)<5){S.meta.modelVersion=5;changed=true;}
+  S.debts=Array.isArray(S.debts)?S.debts:[];
+  for(const d of S.debts){if(!d.currency){d.currency=baseCode();changed=true;}if(!Array.isArray(d.repaid)){d.repaid=[];changed=true;}}
+  S.meta=S.meta||{};if((S.meta.modelVersion||0)<6){S.meta.modelVersion=6;changed=true;}
   return changed;
 }
 
