@@ -349,17 +349,24 @@ window.PFBackendReady=new Promise(resolve=>{window.__resolvePFBackendReady=resol
     const SUPABASE_URL = 'https://dnbqxitbyytuirkpmaji.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRuYnF4aXRieXl0dWlya3BtYWppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5NzcxMjIsImV4cCI6MjEwMDU1MzEyMn0.lpyg96S8j1CcbfQEwZ2ZSeIeBw2t2uCA29nx_SgAIjs';
     const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth:{ persistSession:false, autoRefreshToken:true, detectSessionInUrl:true }
+      auth:{ persistSession:false, autoRefreshToken:true, detectSessionInUrl:false }
     });
+    const USERNAME_DOMAIN = 'pfinance.flexico.by';
+    function usernameToEmail(username){
+      const value=String(username||'').trim().toLowerCase();
+      if(!/^[a-z0-9._-]{3,32}$/.test(value))throw new Error('invalid username');
+      return value+'@'+USERNAME_DOMAIN;
+    }
 
     window.PFBackend = {
       user: null,
       _cbs: [],
       onChange(cb){ this._cbs.push(cb); },
-      async signInWithEmail(email){
-        const { error } = await sb.auth.signInWithOtp({
-          email, options:{ emailRedirectTo: window.location.origin + window.location.pathname }
-        });
+      async signInWithUsernamePassword(username,password){
+        let email;
+        try{ email=usernameToEmail(username); }
+        catch(e){ return { error:e }; }
+        const { error } = await sb.auth.signInWithPassword({ email, password });
         return { error };
       },
       async signOut(){ return await sb.auth.signOut(); },
@@ -1480,32 +1487,40 @@ function renderLogin(){
   app.innerHTML='<div style="min-height:100vh;display:grid;place-items:center;padding:20px">'+
     '<div class="card pad" style="width:100%;max-width:420px">'+
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px"><div class="brand" style="padding:0"><div class="mark">Br</div><div><b>Финансы</b><small>личный контроль</small></div></div></div>'+
-      '<h1 style="font-size:23px;margin-bottom:5px">Вход по email</h1>'+
-      '<p class="muted" style="margin:0 0 18px">Введите email — мы отправим ссылку для входа.</p>'+
-      '<div class="field"><label>Email</label><input class="inp" id="login-email" type="email" autocomplete="email" placeholder="name@example.com"></div>'+
-      '<button class="btn primary" id="login-send" style="width:100%;justify-content:center">Получить ссылку для входа</button>'+
+      '<h1 style="font-size:23px;margin-bottom:5px">Вход</h1>'+
+      '<p class="muted" style="margin:0 0 18px">Введите имя пользователя и пароль.</p>'+
+      '<div class="field"><label>Имя пользователя</label><input class="inp" id="login-username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="admin"></div>'+
+      '<div class="field"><label>Пароль</label><input class="inp" id="login-password" type="password" autocomplete="current-password" placeholder="Пароль"></div>'+
+      '<button class="btn primary" id="login-submit" style="width:100%;justify-content:center">Войти</button>'+
       '<div class="fs13 muted" id="login-status" style="margin-top:12px;min-height:20px"></div>'+
     '</div></div>';
-  const email=document.getElementById("login-email");
-  const btn=document.getElementById("login-send");
+  const username=document.getElementById("login-username");
+  const password=document.getElementById("login-password");
+  const btn=document.getElementById("login-submit");
   const status=document.getElementById("login-status");
-  const send=async()=>{
-    const value=email.value.trim();
-    if(!value||!email.checkValidity()){status.textContent="Введите корректный email";email.focus();return;}
-    btn.disabled=true;btn.textContent="Отправляем…";status.textContent="";
+  const submit=async()=>{
+    const name=username.value.trim().toLowerCase();
+    const pass=password.value;
+    if(!/^[a-z0-9._-]{3,32}$/.test(name)){
+      status.textContent="Имя: 3–32 символа, латинские буквы, цифры, точка, дефис или подчёркивание";
+      username.focus();return;
+    }
+    if(!pass){status.textContent="Введите пароль";password.focus();return;}
+    btn.disabled=true;btn.textContent="Входим…";status.textContent="";
     try{
-      const {error}=await window.PFBackend.signInWithEmail(value);
+      const {error}=await window.PFBackend.signInWithUsernamePassword(name,pass);
       if(error)throw error;
-      status.textContent="Проверьте почту";
-      btn.textContent="Ссылка отправлена";
+      status.textContent="Вход выполнен";
     }catch(e){
-      status.textContent="Не удалось отправить ссылку. Проверьте email и соединение.";
-      btn.disabled=false;btn.textContent="Получить ссылку для входа";
+      status.textContent="Неверное имя пользователя или пароль";
+      btn.disabled=false;btn.textContent="Войти";
+      password.select();
     }
   };
-  btn.addEventListener("click",send);
-  email.addEventListener("keydown",e=>{if(e.key==="Enter")send();});
-  email.focus();
+  btn.addEventListener("click",submit);
+  username.addEventListener("keydown",e=>{if(e.key==="Enter")password.focus();});
+  password.addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
+  username.focus();
 }
 async function init(){
   const run=++initRun;
