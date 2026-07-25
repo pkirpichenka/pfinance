@@ -154,6 +154,7 @@ tbody tr:hover{background:var(--surface-2)}
 .chip.c-biz_income{background:var(--personal-bg);color:var(--personal)}
 .chip.c-biz_expense{background:var(--liab-bg);color:var(--liab)}
 .chip.c-adjustment{background:var(--surface-3);color:var(--ink-2)}
+.chip.c-transfer{background:var(--asset-bg);color:var(--asset)}
 .tag-cat{background:var(--surface-3);color:var(--ink-2);padding:2px 8px;border-radius:6px;font-size:12px}
 
 /* ---------- Forms ---------- */
@@ -518,13 +519,19 @@ function fmt(n,sign,code){
 /* --- Счета --- */
 function accById(id){return (S.accounts||[]).find(a=>a.id===id);}
 function accCur(t){const a=t&&t.account?accById(t.account):null;return a?a.currency:baseCode();}
-function hasAccountTx(id){return (S.tx||[]).some(t=>t.account===id);}
+function hasAccountTx(id){return (S.tx||[]).some(t=>t.account===id||t.fromAccount===id||t.toAccount===id);}
 function hasBizTx(id){return (S.tx||[]).some(t=>t.biz===id);}
 function activeAccounts(){return (S.accounts||[]).filter(a=>!a.archived);}
 function accountBalance(id){
   const a=accById(id); if(!a)return 0;
   let v=Number(a.opening)||0;
-  for(const t of S.tx){ if(t.account!==id)continue;
+  for(const t of S.tx){
+    if(t.type==="transfer"){
+      if(t.fromAccount===id)v-=Number(t.amount)||0;
+      if(t.toAccount===id)v+=Number(t.toAmount)||0;
+      continue;
+    }
+    if(t.account!==id)continue;
     if(t.type==="in"||t.type==="draw")v+=t.amount;           // деньги пришли на счёт
     else if(t.type==="out"||t.type==="contribution")v-=t.amount; // ушли со счёта
     else if(t.type==="account_adjustment")v+=Number(t.delta)||0;  // сверка фактического баланса
@@ -854,6 +861,7 @@ function viewAccounts(){
 const TYPES=[
   {id:"in",   t:"Доход",           d:"Личные деньги пришли",           bar:"var(--personal)"},
   {id:"out",  t:"Расход",          d:"Личная трата",                    bar:"var(--liab)"},
+  {id:"transfer", t:"Перевод между счетами", d:"Перемещение личных денег", bar:"var(--asset)"},
   {id:"draw", t:"Вывод из бизнеса", d:"Взял из студии/аппарата себе",   bar:"var(--biz)"},
   {id:"contribution", t:"Возврат в бизнес", d:"Вернул деньги на ЗП/закупки", bar:"#8792A2"},
   {id:"biz_income", t:"Доход бизнеса", d:"Выручка на счёт бизнеса",     bar:"var(--personal)"},
@@ -876,6 +884,13 @@ function viewAdd(){
     '</div>'+
     '<div id="f-acc-wrap" class="field"><label id="f-acc-lbl">Счёт</label><select class="inp" id="f-acc">'+
       (activeAccounts().length?activeAccounts().map(acc=>'<option value="'+acc.id+'" data-cur="'+acc.currency+'">'+acc.emoji+' '+esc(acc.name)+' · '+acc.currency+'</option>').join(""):'<option value="">Нет активных счетов</option>')+'</select></div>'+
+    '<div id="f-transfer-wrap" class="row2 hidden">'+
+      '<div class="field"><label>Со счёта</label><select class="inp" id="f-from-acc">'+
+        (activeAccounts().length?activeAccounts().map(acc=>'<option value="'+acc.id+'" data-cur="'+acc.currency+'">'+acc.emoji+' '+esc(acc.name)+' · '+acc.currency+'</option>').join(""):'<option value="">Нет активных счетов</option>')+'</select></div>'+
+      '<div class="field"><label>На счёт</label><select class="inp" id="f-to-acc">'+
+        (activeAccounts().length?activeAccounts().map(acc=>'<option value="'+acc.id+'" data-cur="'+acc.currency+'">'+acc.emoji+' '+esc(acc.name)+' · '+acc.currency+'</option>').join(""):'<option value="">Нет активных счетов</option>')+'</select></div>'+
+    '</div>'+
+    '<div id="f-transfer-result" class="field hidden" style="background:var(--asset-bg);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--ink-2)"></div>'+
     '<div id="f-biz-wrap" class="field hidden"><label>Бизнес</label><select class="inp" id="f-biz">'+
       S.businesses.map(b=>'<option value="'+b.id+'">'+b.emoji+' '+esc(b.name)+'</option>').join("")+'</select></div>'+
     '<div class="field" id="f-cat-wrap"><label>Категория</label><select class="inp" id="f-cat"></select></div>'+
@@ -889,39 +904,67 @@ function viewAdd(){
 }
 function refreshAddForm(){
   const type=document.getElementById("f-type").value;
+  const isTransfer=type==="transfer";
   const isBiz=(type==="draw"||type==="contribution"||type==="biz_income"||type==="biz_expense");
   const usesAccount=(type==="in"||type==="out"||type==="draw"||type==="contribution");
   document.getElementById("f-biz-wrap").classList.toggle("hidden",!isBiz);
-  // счёт нужен для личных движений и вывода/возврата; для доход/расход бизнеса — нет
   document.getElementById("f-acc-wrap").classList.toggle("hidden",!usesAccount);
+  document.getElementById("f-transfer-wrap").classList.toggle("hidden",!isTransfer);
+  document.getElementById("f-transfer-result").classList.toggle("hidden",!isTransfer);
+  document.getElementById("f-cat-wrap").classList.toggle("hidden",isTransfer);
   const accLbl={in:"Куда пришло (счёт)",out:"С какого счёта",draw:"На какой счёт вывели",contribution:"С какого счёта вернули"};
   if(usesAccount)document.getElementById("f-acc-lbl").textContent=accLbl[type]||"Счёт";
+  if(isTransfer)ensureTransferAccounts();
   updateAmountCurrencyLabel();
   // категории
   const catSel=document.getElementById("f-cat");
-  let cats;
+  let cats=[];
   if(type==="in")cats=S.categories.in;
   else if(type==="out")cats=S.categories.out;
   else if(type==="draw")cats=["Вывод на карту","Вывод наличными"];
-  else if(type==="biz_income")cats=S.categories.bizIn;      // только доходные статьи
-  else cats=S.categories.bizOut;                            // biz_expense и «возврат в бизнес» — расходные статьи
+  else if(type==="biz_income")cats=S.categories.bizIn;
+  else if(type!=="transfer")cats=S.categories.bizOut;
   catSel.innerHTML=cats.map(c=>'<option>'+esc(c)+'</option>').join("");
   // пояснение
   const ex={
     in:"➕ Баланс выбранного счёта увеличится. Это ваш реальный доход.",
     out:"➖ Баланс выбранного счёта уменьшится. Это ваша личная трата (для кредитки — уйдёт в минус в пределах лимита).",
+    transfer:"Со счёта-источника сумма спишется, на выбранный счёт — зачислится. Перевод НЕ считается доходом или расходом.",
     draw:"Счёт ↑, баланс бизнеса ↓. Это НЕ доход — просто перемещение денег себе. Учитывается как «выведено».",
     contribution:"Счёт ↓, баланс бизнеса ↑. Это НЕ личный расход — вы вернули деньги в дело (ЗП, закупки). Учитывается как «возвращено».",
     biz_income:"Баланс бизнеса ↑. Ваши личные счета не меняются — деньги остались в обороте.",
     biz_expense:"Баланс бизнеса ↓. Оплата напрямую со счёта бизнеса, личных денег не касается.",
   };
   document.getElementById("f-explain").textContent=ex[type]||"";
+  if(isTransfer)updateTransferPreview();
+}
+function ensureTransferAccounts(){
+  const from=document.getElementById("f-from-acc"),to=document.getElementById("f-to-acc");
+  if(!from||!to)return;
+  if(from.value===to.value&&to.options.length>1)to.selectedIndex=from.selectedIndex===0?1:0;
+}
+function transferAmounts(){
+  const from=accById(mval("f-from-acc")),to=accById(mval("f-to-acc"));
+  const amount=Number(mval("f-amount"))||0;
+  if(!from||!to||from.id===to.id||amount<=0)return {from,to,amount,toAmount:0};
+  const toAmount=from.currency===to.currency?amount:toBase(amount,from.currency)/rate(to.currency);
+  return {from,to,amount,toAmount};
+}
+function updateTransferPreview(){
+  const box=document.getElementById("f-transfer-result");if(!box)return;
+  const {from,to,amount,toAmount}=transferAmounts();
+  if(activeAccounts().length<2){box.textContent="Для перевода нужны минимум два активных счёта.";return;}
+  if(!from||!to){box.textContent="Выберите счёт списания и счёт зачисления.";return;}
+  if(from.id===to.id){box.textContent="Счета списания и зачисления должны отличаться.";return;}
+  if(amount<=0){box.textContent="Введите сумму перевода в валюте счёта «"+from.name+"».";return;}
+  box.innerHTML='Со счёта <b>'+esc(from.name)+'</b> спишется <span class="mono">'+fmt(amount,false,from.currency)+'</span>; на <b>'+esc(to.name)+'</b> зачислится <span class="mono">'+fmt(toAmount,false,to.currency)+'</span>'+(from.currency!==to.currency?' по текущим курсам НБРБ. Сумма зачисления фиксируется в операции.':'.');
 }
 function updateAmountCurrencyLabel(){
   const type=document.getElementById("f-type").value;
   const usesAccount=(type==="in"||type==="out"||type==="draw"||type==="contribution");
   let code=baseCode();
-  if(usesAccount){const sel=document.getElementById("f-acc");const opt=sel&&sel.selectedOptions[0];if(opt)code=opt.dataset.cur;}
+  if(type==="transfer"){const a=accById(mval("f-from-acc"));if(a)code=a.currency;}
+  else if(usesAccount){const sel=document.getElementById("f-acc");const opt=sel&&sel.selectedOptions[0];if(opt)code=opt.dataset.cur;}
   document.getElementById("f-amount-lbl").textContent="Сумма ("+sym(code)+")";
 }
 
@@ -931,6 +974,7 @@ function updateAmountCurrencyLabel(){
 const TYPE_META={
   in:{n:"Доход",c:"c-in"}, out:{n:"Расход",c:"c-out"}, draw:{n:"Вывод",c:"c-draw"},
   contribution:{n:"Возврат в бизнес",c:"c-contribution"}, biz_income:{n:"Доход бизнеса",c:"c-biz_income"}, biz_expense:{n:"Расход бизнеса",c:"c-biz_expense"},
+  transfer:{n:"Перевод",c:"c-transfer"},
   account_adjustment:{n:"Корректировка счёта",c:"c-adjustment"}, biz_adjustment:{n:"Корректировка бизнеса",c:"c-adjustment"}
 };
 function viewTx(){
@@ -944,18 +988,26 @@ function viewTx(){
     const m=TYPE_META[t.type]||{n:t.type,c:"c-adjustment"};
     const b=t.biz?bizById(t.biz):null;
     const acc=t.account?accById(t.account):null;
-    const code=acc?acc.currency:baseCode();
+    const fromAcc=t.fromAccount?accById(t.fromAccount):null;
+    const toAcc=t.toAccount?accById(t.toAccount):null;
+    const isTransfer=t.type==="transfer";
+    const code=isTransfer?(fromAcc?fromAcc.currency:baseCode()):(acc?acc.currency:baseCode());
     const isAdj=t.type==="account_adjustment"||t.type==="biz_adjustment";
     const delta=isAdj?(Number(t.delta)||0):0;
     const shownAmount=isAdj?Math.abs(delta):t.amount;
     const sign=isAdj?(delta>0?"+":delta<0?"−":""):(t.type==="out"||t.type==="contribution"||t.type==="biz_expense"?"−":(t.type==="draw"?"":"+"));
-    const amtCls=isAdj?(delta>=0?"pos":"neg"):(t.type==="draw"?"amber":((t.type==="in"||t.type==="biz_income")?"pos":"neg"));
+    const amtCls=isTransfer?"blue":(isAdj?(delta>=0?"pos":"neg"):(t.type==="draw"?"amber":((t.type==="in"||t.type==="biz_income")?"pos":"neg")));
+    const details='<span class="tag-cat">'+esc(t.cat||"—")+'</span>'+(b?' <span class="fs12 muted">'+b.emoji+' '+esc(b.name)+'</span>':'')+(t.note?'<div class="fs12 muted" style="margin-top:2px">'+esc(t.note)+'</div>':'');
+    const accountHtml=isTransfer?(fromAcc&&toAcc?fromAcc.emoji+' '+esc(fromAcc.name)+' → '+toAcc.emoji+' '+esc(toAcc.name):'счёт удалён'):(acc?acc.emoji+' '+esc(acc.name):(b?'счёт бизнеса':'—'));
+    const amountHtml=isTransfer
+      ?'−'+fmt(t.amount,false,fromAcc?fromAcc.currency:baseCode()).replace("−","")+'<div class="fs12 pos" style="font-weight:500">+'+fmt(t.toAmount,false,toAcc?toAcc.currency:baseCode()).replace("−","")+'</div>'
+      :sign+fmt(shownAmount,false,code).replace("−","")+(code!==baseCode()?'<div class="fs12 muted" style="font-weight:400">≈ '+fmt(toBase(shownAmount,code))+'</div>':'');
     return '<tr>'+
       '<td class="mono fs12 muted" data-label="Дата">'+fmtDate(t.date)+'</td>'+
       '<td data-label="Тип"><span class="chip '+m.c+'"><span class="d" style="background:currentColor"></span>'+m.n+'</span></td>'+
-      '<td data-label="Детали"><span class="tag-cat">'+esc(t.cat||"—")+'</span>'+(b?' <span class="fs12 muted">'+b.emoji+' '+esc(b.name)+'</span>':'')+(t.note?'<div class="fs12 muted" style="margin-top:2px">'+esc(t.note)+'</div>':'')+'</td>'+
-      '<td class="fs12 muted" data-label="Счёт">'+(acc?acc.emoji+' '+esc(acc.name):(b?'счёт бизнеса':'—'))+'</td>'+
-      '<td class="num '+amtCls+'" data-label="Сумма" style="font-weight:600">'+sign+fmt(shownAmount,false,code).replace("−","")+(code!==baseCode()?'<div class="fs12 muted" style="font-weight:400">≈ '+fmt(toBase(shownAmount,code))+'</div>':'')+'</td>'+
+      '<td data-label="Детали">'+details+'</td>'+
+      '<td class="fs12 muted" data-label="Счёт">'+accountHtml+'</td>'+
+      '<td class="num '+amtCls+'" data-label="Сумма" style="font-weight:600">'+amountHtml+'</td>'+
       '<td class="num no-label"><button class="x-btn" data-act="del-tx" data-id="'+t.id+'" title="Удалить">'+svg(I.trash,'')+'</button></td>'+
     '</tr>';
   }).join("");
@@ -963,7 +1015,7 @@ function viewTx(){
     :'<div class="empty">'+svg(I.tx)+'<b>Операций пока нет</b><span class="fs13">Добавьте первую запись, чтобы начать вести учёт.</span><div style="margin-top:12px"><button class="btn primary" data-act="nav" data-v="add">Внести операцию</button></div></div>';
   return head("Операции",list.length+" записей")+
   '<div class="filters">'+
-    filterBtn("all","Все")+filterBtn("in","Доходы")+filterBtn("out","Расходы")+filterBtn("draw","Выводы")+filterBtn("contribution","Возвраты")+filterBtn("biz_income","Доход бизнеса")+filterBtn("biz_expense","Расход бизнеса")+filterBtn("adjustments","Корректировки")+
+    filterBtn("all","Все")+filterBtn("in","Доходы")+filterBtn("out","Расходы")+filterBtn("transfer","Переводы")+filterBtn("draw","Выводы")+filterBtn("contribution","Возвраты")+filterBtn("biz_income","Доход бизнеса")+filterBtn("biz_expense","Расход бизнеса")+filterBtn("adjustments","Корректировки")+
     '<span class="spacer"></span>'+
     '<div class="seg"><button class="'+(p==="all"?"on":"")+'" data-act="tx-period" data-p="all">За всё время</button><button class="'+(p==="month"?"on":"")+'" data-act="tx-period" data-p="month">Этот месяц</button></div>'+
     '<button class="btn primary sm" data-act="nav" data-v="add">'+svg(I.add)+'Добавить</button>'+
@@ -1471,7 +1523,21 @@ function saveTx(){
   const type=document.getElementById("f-type").value;
   const amount=+mval("f-amount");
   if(!amount||amount<=0){toast("Введите сумму больше нуля");return;}
-  const t={id:uid(),type,amount,cat:mval("f-cat"),date:mval("f-date")||TODAY(),note:mval("f-note").trim()};
+  const date=mval("f-date")||TODAY();
+  const note=mval("f-note").trim();
+  if(type==="transfer"){
+    const {from,to,toAmount}=transferAmounts();
+    if(activeAccounts().length<2){toast("Для перевода нужны минимум два активных счёта");return;}
+    if(!from||!to||from.archived||to.archived){toast("Выберите два активных счёта");return;}
+    if(from.id===to.id){toast("Выберите разные счета");return;}
+    if(!Number.isFinite(toAmount)||toAmount<=0){toast("Не удалось рассчитать сумму зачисления");return;}
+    S.tx.push({id:uid(),type:"transfer",fromAccount:from.id,toAccount:to.id,amount,toAmount,cat:"Перевод между счетами",date,note,rateFrom:rate(from.currency),rateTo:rate(to.currency)});
+    S.meta.lastEntryDate=TODAY();
+    persist();
+    toast("Перевод сохранён · "+fmt(amount,false,from.currency));
+    S.ui.view="tx";render();return;
+  }
+  const t={id:uid(),type,amount,cat:mval("f-cat"),date,note};
   if(type==="draw"||type==="contribution"||type==="biz_income"||type==="biz_expense")t.biz=mval("f-biz");
   if(type==="in"||type==="out"||type==="draw"||type==="contribution")t.account=mval("f-acc");
   if((type==="in"||type==="out"||type==="draw"||type==="contribution")&&(!t.account||!accById(t.account)||accById(t.account).archived)){toast("Сначала добавьте или восстановите активный счёт");return;}
@@ -1502,9 +1568,14 @@ function importJSON(){
 document.addEventListener("change",e=>{
   if(e.target.id==="f-type")refreshAddForm();
   if(e.target.id==="f-acc")updateAmountCurrencyLabel();
+  if(e.target.id==="f-from-acc"||e.target.id==="f-to-acc"){ensureTransferAccounts();updateAmountCurrencyLabel();updateTransferPreview();}
   if(e.target.dataset&&e.target.dataset.act==="rate-input"){
     const c=curObj(e.target.dataset.code);if(c){c.rate=+e.target.value||1;persist();render();}
   }
+});
+
+document.addEventListener("input",e=>{
+  if(e.target.id==="f-amount"&&document.getElementById("f-type")?.value==="transfer")updateTransferPreview();
 });
 
 /* =========================================================
