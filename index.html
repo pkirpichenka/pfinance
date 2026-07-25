@@ -511,8 +511,8 @@ function toBase(amt,code){return (Number(amt)||0)*rate(code||baseCode());}
 const C=()=> sym(baseCode());
 function fmt(n,sign,code){
   code=code||baseCode();
-  const v=Math.round(Number(n)||0);
-  const s=new Intl.NumberFormat("ru-RU").format(Math.abs(v));
+  const v=Math.round((Number(n)||0)*100)/100;
+  const s=new Intl.NumberFormat("ru-RU",{minimumFractionDigits:2,maximumFractionDigits:2}).format(Math.abs(v));
   const pre=(sign&&v>0)?"+":(v<0?"−":"");
   return pre+s+" "+sym(code);
 }
@@ -823,7 +823,6 @@ function viewAccounts(){
         '<div class="avatar" style="background:var(--surface-3);font-size:17px">'+a.emoji+'</div>'+
         '<div style="flex:1;min-width:0"><div style="font-weight:600;font-family:var(--disp)">'+esc(a.name)+(a.archived?' <span class="chip c-adjustment" style="vertical-align:middle">архив</span>':'')+'</div>'+
         '<div class="fs12 muted">'+accKindLabel(a.kind)+' · '+a.currency+'</div></div>'+
-        '<button class="x-btn" data-act="edit-acc" data-id="'+a.id+'" title="Изменить">'+svg(I.edit)+'</button>'+
       '</div>'+
       '<div class="mono" style="font-weight:700;font-size:24px;color:'+(b<0?'var(--liab)':'var(--personal)')+'">'+fmt(b,false,a.currency)+'</div>'+
       (a.currency!==baseCode()?'<div class="fs12 muted mono">≈ '+fmt(toBase(b,a.currency))+' в '+sym(baseCode())+'</div>':'')+
@@ -833,6 +832,7 @@ function viewAccounts(){
         :'')+
       (a.archived?'<div class="fs12 muted" style="margin-top:10px">Счёт скрыт из формы новых операций.</div>':'')+
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+
+        '<button class="btn sm" data-act="edit-acc" data-id="'+a.id+'">'+svg(I.edit)+'Изменить</button>'+ 
         (!a.archived?'<button class="btn sm" data-act="adjust-acc" data-id="'+a.id+'">Сверить баланс</button>':'')+
         archiveAction+
       '</div>'+
@@ -879,7 +879,7 @@ function viewAdd(){
     '</div>'+
     '<input type="hidden" id="f-type" value="in">'+
     '<div class="row2">'+
-      '<div class="field"><label id="f-amount-lbl">Сумма ('+C()+')</label><input class="inp mono" id="f-amount" type="number" min="0" step="1" placeholder="0" inputmode="decimal"></div>'+
+      '<div class="field"><label id="f-amount-lbl">Сумма ('+C()+')</label><input class="inp mono" id="f-amount" type="number" min="0" step="0.01" placeholder="0,00" inputmode="decimal"></div>'+
       '<div class="field"><label>Дата</label><input class="inp" id="f-date" type="date" value="'+TODAY()+'"></div>'+
     '</div>'+
     '<div id="f-acc-wrap" class="field"><label id="f-acc-lbl">Счёт</label><select class="inp" id="f-acc">'+
@@ -1084,15 +1084,17 @@ function viewBusiness(){
         '<div class="avatar" style="background:var(--biz-bg);font-size:18px">'+b.emoji+'</div>'+
         '<div style="flex:1"><div style="font-weight:600;font-family:var(--disp)">'+esc(b.name)+'</div>'+
         '<div class="fs12 muted">на счёте: <b class="mono">'+fmt(s.balance)+'</b></div></div>'+
-        '<button class="x-btn" data-act="edit-biz" data-id="'+b.id+'" title="Изменить">'+svg(I.edit)+'</button>'+
-        (!history?'<button class="x-btn" data-act="del-biz" data-id="'+b.id+'" title="Удалить">'+svg(I.trash)+'</button>':'')+
       '</div>'+
       '<div class="kpi-line"><span class="muted">Выручка</span><b class="pos">'+fmt(s.income,true)+'</b></div>'+
       '<div class="kpi-line"><span class="muted">Расходы бизнеса</span><b class="neg">'+fmt(s.expense)+'</b></div>'+
       '<div class="kpi-line"><span class="muted">Выведено себе</span><b class="amber">'+fmt(s.draw)+'</b></div>'+
       '<div class="kpi-line"><span class="muted">Возвращено в дело</span><b>'+fmt(s.contribution)+'</b></div>'+
       '<div class="kpi-line" style="border-top:1px solid var(--line);margin-top:4px;padding-top:9px"><span style="font-weight:600">Ваш чистый доход отсюда</span><b class="'+(net>=0?'pos':'neg')+'" style="font-size:15px">'+fmt(net,true)+'</b></div>'+
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="adjust-biz" data-id="'+b.id+'">Сверить баланс</button></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+
+        '<button class="btn sm" data-act="edit-biz" data-id="'+b.id+'">'+svg(I.edit)+'Изменить</button>'+ 
+        '<button class="btn sm" data-act="adjust-biz" data-id="'+b.id+'">Сверить баланс</button>'+ 
+        (!history?'<button class="btn sm ghost danger" data-act="del-biz" data-id="'+b.id+'">'+svg(I.trash)+'Удалить</button>':'')+
+      '</div>'+
     '</div>';
   }).join("");
   const totDraw=sumTx(t=>t.type==="draw"), totContr=sumTx(t=>t.type==="contribution");
@@ -1361,7 +1363,7 @@ function debtForm(d){
   d=d||{dir:"in",who:"",amount:"",date:TODAY(),due:daysAhead(30),note:""};
   return '<div class="field"><label>Направление</label><select class="inp" id="d-dir"><option value="in" '+(d.dir==="in"?"selected":"")+'>Мне должны (актив)</option><option value="out" '+(d.dir==="out"?"selected":"")+'>Я должен (обязательство)</option></select></div>'+
     '<div class="field"><label>Кто / название</label><input class="inp" id="d-who" value="'+esc(d.who)+'" placeholder="Имя человека или банк"></div>'+
-    '<div class="row2"><div class="field"><label>Сумма</label><input class="inp mono" id="d-amount" type="number" value="'+(d.amount||"")+'"></div>'+
+    '<div class="row2"><div class="field"><label>Сумма</label><input class="inp mono" id="d-amount" type="number" step="0.01" value="'+(d.amount||"")+'"></div>'+
     '<div class="field"><label>Дата выдачи</label><input class="inp" id="d-date" type="date" value="'+(d.date||TODAY())+'"></div></div>'+
     '<div class="field"><label>Срок возврата</label><input class="inp" id="d-due" type="date" value="'+(d.due||"")+'"></div>'+
     '<div class="field"><label>Комментарий</label><input class="inp" id="d-note" value="'+esc(d.note||"")+'"></div>';
@@ -1369,8 +1371,8 @@ function debtForm(d){
 function goalForm(g){
   g=g||{name:"",target:"",saved:0,due:daysAhead(180),note:""};
   return '<div class="field"><label>Название цели</label><input class="inp" id="g-name" value="'+esc(g.name)+'" placeholder="Подушка безопасности"></div>'+
-    '<div class="row2"><div class="field"><label>Нужно накопить</label><input class="inp mono" id="g-target" type="number" value="'+(g.target||"")+'"></div>'+
-    '<div class="field"><label>Уже отложено</label><input class="inp mono" id="g-saved" type="number" value="'+(g.saved||0)+'"></div></div>'+
+    '<div class="row2"><div class="field"><label>Нужно накопить</label><input class="inp mono" id="g-target" type="number" step="0.01" value="'+(g.target||"")+'"></div>'+
+    '<div class="field"><label>Уже отложено</label><input class="inp mono" id="g-saved" type="number" step="0.01" value="'+(g.saved||0)+'"></div></div>'+
     '<div class="field"><label>Желаемый срок</label><input class="inp" id="g-due" type="date" value="'+(g.due||"")+'"></div>'+
     '<div class="field"><label>Комментарий</label><input class="inp" id="g-note" value="'+esc(g.note||"")+'"></div>';
 }
@@ -1424,7 +1426,7 @@ document.addEventListener("click",e=>{
   if(act==="del-debt"){S.debts=S.debts.filter(d=>d.id!==el.dataset.id);persist();render();toast("Долг удалён");return;}
   if(act==="repay"){const d=S.debts.find(x=>x.id===el.dataset.id);const rem=debtRemaining(d);
     openModal(d.dir==="in"?"Отметить возврат":"Отметить платёж",
-      '<div class="field"><label>Сумма (осталось '+fmt(rem)+')</label><input class="inp mono" id="r-amt" type="number" value="'+rem+'" max="'+rem+'"></div>'+
+      '<div class="field"><label>Сумма (осталось '+fmt(rem)+')</label><input class="inp mono" id="r-amt" type="number" step="0.01" value="'+rem+'" max="'+rem+'"></div>'+
       '<div class="field"><label>Дата</label><input class="inp" id="r-date" type="date" value="'+TODAY()+'"></div>',
       ()=>{const a=+mval("r-amt");if(!a){toast("Введите сумму");return false;}d.repaid=d.repaid||[];d.repaid.push({amount:Math.min(a,rem),date:mval("r-date")});persist();render();toast("Отмечено");});
     return;}
@@ -1493,7 +1495,7 @@ document.addEventListener("click",e=>{
     return;}
   if(act==="del-goal"){S.goals=S.goals.filter(g=>g.id!==el.dataset.id);persist();render();toast("Цель удалена");return;}
   if(act==="add-to-goal"){const g=S.goals.find(x=>x.id===el.dataset.id);
-    openModal("Отложить в цель «"+g.name+"»",'<div class="field"><label>Сумма</label><input class="inp mono" id="ag-amt" type="number" placeholder="0"></div><div class="fs12 muted">Добавится к накопленному по цели.</div>',
+    openModal("Отложить в цель «"+g.name+"»",'<div class="field"><label>Сумма</label><input class="inp mono" id="ag-amt" type="number" step="0.01" placeholder="0,00"></div><div class="fs12 muted">Добавится к накопленному по цели.</div>',
     ()=>{const a=+mval("ag-amt");if(!a){toast("Введите сумму");return false;}g.saved+=a;persist();render();toast("Отложено "+fmt(a));});
     return;}
 
