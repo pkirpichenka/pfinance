@@ -1,0 +1,6 @@
+PFinance handoff bundle
+Version: 4.5.0
+Date: 2026-07-26
+Production domain: https://pfinance.flexico.by
+Source of truth: index.html
+Data model: legal entities + shared studio cash + multi-currency debts + personal-paid business expenses

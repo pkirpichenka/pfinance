@@ -1,0 +1,2274 @@
+<!-- Личный финансовый дашборд — интерактивный прототип -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#161A21">
+<title>Финансы — личный дашборд</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#EAEEF2; --surface:#FFFFFF; --surface-2:#F6F8FA; --surface-3:#EFF3F6;
+  --ink:#161A21; --ink-2:#3B4250; --muted:#697386; --faint:#9AA4B2;
+  --line:#E1E7ED; --line-strong:#D2DAE2;
+  --personal:#0E7C6B; --personal-bg:#E6F4F0; --personal-line:#BFE4DB;
+  --biz:#B26A08; --biz-bg:#FBF1E1; --biz-line:#EDD6AF;
+  --asset:#2456C7; --asset-bg:#E7EEFB;
+  --liab:#C1334C; --liab-bg:#FBE9EC;
+  --goal:#6B3FA0; --goal-bg:#F0E9F8;
+  --ok:#0E7C6B; --warn:#B26A08; --bad:#C1334C;
+  --radius:15px; --radius-s:10px;
+  --shadow:0 1px 2px rgba(20,30,45,.04),0 8px 24px -12px rgba(20,30,45,.14);
+  --shadow-s:0 1px 2px rgba(20,30,45,.06);
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --disp:'Space Grotesk',system-ui,sans-serif;
+  --body:'Inter',system-ui,sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#0E1116; --surface:#171B22; --surface-2:#1E232C; --surface-3:#252B35;
+  --ink:#EAEEF3; --ink-2:#B9C2CE; --muted:#8A94A3; --faint:#5F6875;
+  --line:#2A313B; --line-strong:#3A424E;
+  --personal:#39C7AE; --personal-bg:#123029;
+  --biz:#E0A24A; --biz-bg:#2E2413;
+  --asset:#6C97F0; --asset-bg:#152238;
+  --liab:#E77389; --liab-bg:#331821;
+  --goal:#B08BE0; --goal-bg:#241A33;
+}
+[data-theme="dark"] .split .side.personal{background:linear-gradient(180deg,var(--personal-bg),var(--surface) 78%)}
+[data-theme="dark"] .split .side.biz{background:linear-gradient(180deg,var(--biz-bg),var(--surface) 78%)}
+[data-theme="dark"] .reminder{background:var(--surface-3)}
+[data-theme="dark"] .reminder .btn{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+[data-theme="dark"] .nav-item.on,[data-theme="dark"] .btn.primary{background:var(--ink);color:var(--bg)}
+[data-theme="dark"] .btn.primary:hover{background:var(--ink-2)}
+[data-theme="dark"] .brand .mark,[data-theme="dark"] .mobile-top .mark{background:var(--ink);color:var(--bg)}
+[data-theme="dark"] .chip.c-contribution{background:var(--surface-3);color:var(--ink-2)}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--body); background:var(--bg); color:var(--ink);
+  -webkit-font-smoothing:antialiased; font-size:14.5px; line-height:1.45;
+}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14.5px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+h1,h2,h3,h4{font-family:var(--disp);margin:0;font-weight:600;letter-spacing:-.01em}
+
+/* ---------- Layout ---------- */
+.app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+.nav{
+  background:var(--surface);border-right:1px solid var(--line);
+  padding:20px 14px;position:sticky;top:0;height:100vh;overflow:auto;
+  display:flex;flex-direction:column;gap:4px
+}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 8px 18px}
+.brand .mark{
+  width:30px;height:30px;border-radius:9px;background:var(--ink);
+  display:grid;place-items:center;color:#fff;font-family:var(--disp);font-weight:700;font-size:15px;
+  flex:0 0 auto
+}
+.brand b{font-family:var(--disp);font-weight:600;font-size:15.5px;letter-spacing:-.01em}
+.brand small{display:block;color:var(--faint);font-size:11px;font-weight:500;margin-top:1px}
+.theme-toggle{width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink-2);display:grid;place-items:center;font-size:17px;line-height:1;flex:0 0 auto}
+.theme-toggle:hover{background:var(--surface-3);color:var(--ink)}
+.brand .theme-toggle{margin-left:auto}
+.nav-item{
+  display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:var(--radius-s);
+  color:var(--ink-2);font-weight:500;border:none;background:none;width:100%;text-align:left;
+  font-size:14px;transition:background .12s,color .12s
+}
+.nav-item svg{width:18px;height:18px;flex:0 0 auto;stroke:currentColor;opacity:.85}
+.nav-item:hover{background:var(--surface-2);color:var(--ink)}
+.nav-item.on{background:var(--ink);color:#fff}
+.nav-item.on svg{opacity:1}
+.nav-sep{height:1px;background:var(--line);margin:8px 6px}
+.nav-foot{margin-top:auto;padding:8px;color:var(--faint);font-size:11px;line-height:1.5}
+
+.main{padding:26px 30px 60px;max-width:1180px;width:100%}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.page-head .t h1{font-size:23px}
+.page-head .t p{margin:3px 0 0;color:var(--muted);font-size:13.5px}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-strong);
+  background:var(--surface);color:var(--ink);padding:9px 14px;border-radius:10px;font-weight:500;
+  font-size:13.5px;transition:.12s;white-space:nowrap
+}
+.btn svg{width:16px;height:16px;stroke:currentColor}
+.btn:hover{background:var(--surface-2);border-color:var(--line-strong)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.primary:hover{background:#242a34}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.ghost:hover{background:var(--surface-3)}
+.btn.sm{padding:6px 10px;font-size:12.5px;border-radius:8px}
+.btn.danger{color:var(--bad);border-color:var(--liab-bg)}
+.btn.danger:hover{background:var(--liab-bg)}
+
+/* ---------- Cards / grid ---------- */
+.grid{display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-s)}
+.card.pad{padding:18px}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.card-h h3{font-size:15px}
+.card-b{padding:16px 18px}
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+
+/* reminder banner */
+.reminder{
+  display:flex;align-items:center;gap:14px;background:var(--ink);color:#fff;
+  border-radius:var(--radius);padding:14px 18px;margin-bottom:18px
+}
+.reminder .dot{width:9px;height:9px;border-radius:50%;background:#F5C451;flex:0 0 auto;box-shadow:0 0 0 4px rgba(245,196,81,.22)}
+.reminder .txt{flex:1}
+.reminder .txt b{font-family:var(--disp);font-size:14.5px}
+.reminder .txt span{display:block;color:#B9C1CD;font-size:12.5px;margin-top:1px}
+.reminder .btn{background:#fff;color:var(--ink);border-color:#fff}
+.reminder .x{background:none;border:none;color:#8b94a3;font-size:18px;line-height:1;padding:4px}
+
+/* ---------- Split balance (signature) ---------- */
+.split{display:grid;grid-template-columns:1.15fr 1fr;gap:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface);box-shadow:var(--shadow)}
+.split .side{padding:22px 24px;position:relative}
+.split .side.personal{background:linear-gradient(180deg,var(--personal-bg),#fff 78%)}
+.split .side.biz{background:linear-gradient(180deg,var(--biz-bg),#fff 78%);border-left:1px solid var(--line)}
+.side .lbl{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;font-family:var(--disp)}
+.side .lbl .tag{width:8px;height:8px;border-radius:2px}
+.personal .tag{background:var(--personal)}.biz .tag{background:var(--biz)}
+.side .hint{color:var(--muted);font-size:11.5px;margin:2px 0 14px;max-width:32ch}
+.side .amt{font-family:var(--mono);font-weight:700;font-size:32px;letter-spacing:-.03em;line-height:1}
+.personal .amt{color:var(--personal)}.biz .amt{color:var(--biz)}
+.side .sub{margin-top:12px;display:flex;gap:18px;flex-wrap:wrap}
+.side .sub .k{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.03em}
+.side .sub .v{font-family:var(--mono);font-weight:600;font-size:14px;display:block;margin-top:1px}
+
+/* ---------- Stat cards ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;box-shadow:var(--shadow-s)}
+.stat .top{display:flex;align-items:center;justify-content:space-between}
+.stat .name{font-size:12px;color:var(--muted);font-weight:500}
+.stat .ico{width:26px;height:26px;border-radius:8px;display:grid;place-items:center}
+.stat .ico svg{width:15px;height:15px}
+.stat .val{font-family:var(--mono);font-weight:700;font-size:22px;letter-spacing:-.02em;margin-top:9px}
+.stat .foot{font-size:11.5px;color:var(--muted);margin-top:3px}
+.i-in{background:var(--personal-bg);color:var(--personal)}
+.i-out{background:var(--liab-bg);color:var(--liab)}
+.i-asset{background:var(--asset-bg);color:var(--asset)}
+.i-liab{background:var(--liab-bg);color:var(--liab)}
+.i-biz{background:var(--biz-bg);color:var(--biz)}
+.i-goal{background:var(--goal-bg);color:var(--goal)}
+
+.pos{color:var(--personal)}.neg{color:var(--liab)}.amber{color:var(--biz)}.blue{color:var(--asset)}.purple{color:var(--goal)}
+
+/* ---------- Table ---------- */
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-family:var(--mono);padding:10px 12px;border-bottom:1px solid var(--line)}
+td{padding:11px 12px;border-bottom:1px solid var(--surface-3);font-size:13.5px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--surface-2)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:500;font-family:var(--mono)}
+.chip .d{width:6px;height:6px;border-radius:50%}
+.chip.c-in{background:var(--personal-bg);color:var(--personal)}
+.chip.c-out{background:var(--liab-bg);color:var(--liab)}
+.chip.c-draw{background:var(--biz-bg);color:var(--biz)}
+.chip.c-contribution{background:#EEF1F4;color:var(--ink-2)}
+.chip.c-biz_income{background:var(--personal-bg);color:var(--personal)}
+.chip.c-biz_expense{background:var(--liab-bg);color:var(--liab)}
+.chip.c-adjustment{background:var(--surface-3);color:var(--ink-2)}
+.chip.c-transfer{background:var(--asset-bg);color:var(--asset)}
+.tag-cat{background:var(--surface-3);color:var(--ink-2);padding:2px 8px;border-radius:6px;font-size:12px}
+
+/* ---------- Forms ---------- */
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12.5px;font-weight:500;color:var(--ink-2);margin-bottom:5px}
+.field .hint{font-size:11.5px;color:var(--muted);margin-top:4px}
+.inp,select.inp,textarea.inp{
+  width:100%;padding:10px 12px;border:1px solid var(--line-strong);border-radius:var(--radius-s);
+  background:var(--surface);color:var(--ink);transition:.12s;outline:none
+}
+.inp:focus{border-color:var(--personal);box-shadow:0 0 0 3px var(--personal-bg)}
+textarea.inp{resize:vertical;min-height:60px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+/* type picker */
+.types{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
+.type-btn{
+  border:1px solid var(--line-strong);background:var(--surface);border-radius:11px;padding:11px 10px;
+  text-align:left;transition:.12s;display:flex;flex-direction:column;gap:2px
+}
+.type-btn:hover{border-color:var(--line-strong);background:var(--surface-2)}
+.type-btn.on{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.type-btn .tt{font-weight:600;font-size:13px;font-family:var(--disp)}
+.type-btn .td{font-size:10.5px;color:var(--muted);line-height:1.3}
+.type-btn .bar{height:3px;border-radius:2px;margin-bottom:6px;width:26px}
+
+/* segmented */
+.seg{display:inline-flex;background:var(--surface-3);border-radius:9px;padding:3px;gap:2px}
+.seg button{border:none;background:none;padding:6px 12px;border-radius:7px;font-size:12.5px;font-weight:500;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-s)}
+
+/* progress */
+.prog{height:9px;border-radius:20px;background:var(--surface-3);overflow:hidden}
+.prog>span{display:block;height:100%;border-radius:20px;transition:width .25s ease}
+
+/* empty */
+.empty{text-align:center;padding:34px 18px;color:var(--muted)}
+.empty svg{width:34px;height:34px;stroke:var(--faint);margin-bottom:10px}
+.empty b{display:block;font-family:var(--disp);color:var(--ink);font-size:15px;margin-bottom:3px}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(22,26,33,.42);backdrop-filter:blur(2px);display:grid;place-items:center;z-index:50;padding:20px;animation:fade .15s}
+.modal{background:var(--surface);border-radius:18px;width:100%;max-width:520px;max-height:90vh;overflow:auto;box-shadow:0 24px 60px -18px rgba(20,30,45,.4)}
+.modal-h{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface)}
+.modal-h h3{font-size:16px}
+.modal-b{padding:20px}
+.modal-f{display:flex;gap:10px;justify-content:flex-end;padding:0 20px 20px}
+.x-btn{background:none;border:none;font-size:20px;color:var(--muted);line-height:1;padding:4px 6px;border-radius:6px}
+.x-btn:hover{background:var(--surface-2)}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* toast */
+.toast-wrap{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:8px;align-items:center}
+.toast{background:var(--ink);color:#fff;padding:11px 18px;border-radius:11px;font-size:13.5px;box-shadow:var(--shadow);animation:pop .2s;display:flex;align-items:center;gap:9px}
+.toast .d{width:7px;height:7px;border-radius:50%;background:var(--personal)}
+.toast .msg{white-space:nowrap}
+.toast .undo{border:none;background:none;color:#fff;font-weight:700;padding:3px 0 3px 8px;text-decoration:underline;text-underline-offset:3px}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* misc */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.list-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--surface-3)}
+.list-row:last-child{border-bottom:none}
+.avatar{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-family:var(--disp);font-weight:600;font-size:13px;flex:0 0 auto}
+.muted{color:var(--muted)}.fs12{font-size:12px}.fs13{font-size:13px}
+.spacer{flex:1}
+.due-soon{color:var(--biz);font-weight:600}
+.due-over{color:var(--liab);font-weight:600}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.mobile-nav{display:none}
+.mobile-top{display:none}
+.bottom-nav{display:none}
+.sheet-item{display:flex;align-items:center;gap:13px;padding:14px 8px;border:none;background:none;width:100%;text-align:left;font-size:15.5px;color:var(--ink);border-bottom:1px solid var(--surface-3)}
+.sheet-item:last-child{border-bottom:none}
+.sheet-item svg{width:20px;height:20px;stroke:var(--ink-2)}
+.sheet-item.on{color:var(--personal)}
+.sheet-item.on svg{stroke:var(--personal)}
+.hidden{display:none!important}
+.divider{height:1px;background:var(--line);margin:16px 0}
+.kpi-line{display:flex;justify-content:space-between;padding:7px 0;font-size:13px;border-bottom:1px dashed var(--surface-3)}
+.kpi-line:last-child{border-bottom:none}
+.kpi-line b{font-family:var(--mono)}
+.clickable{cursor:pointer;transition:transform .12s,border-color .12s,background .12s}
+.clickable:hover{border-color:var(--line-strong);transform:translateY(-1px)}
+.preset-strip{display:flex;gap:8px;overflow-x:auto;padding:2px 1px 7px;scrollbar-width:thin}
+.preset-chip{flex:0 0 auto;border:1px solid var(--line-strong);background:var(--surface-2);color:var(--ink-2);border-radius:999px;padding:7px 11px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.preset-chip:hover{background:var(--surface-3);color:var(--ink)}
+.tx-active-filter{background:var(--asset-bg);color:var(--asset);border-color:transparent}
+.chart-drill{cursor:pointer}
+.chart-drill:hover rect{opacity:1!important}
+
+
+/* ---------- Compact add screen 4.5 ---------- */
+.compact-add-shell{max-width:500px;margin:0 auto}
+.compact-add{padding:4px 15px 16px;overflow:visible}
+.compact-add .compact-seg{display:flex;background:var(--surface-3);border-radius:12px;padding:3px;gap:2px;margin-bottom:12px}
+.compact-add .compact-seg button{flex:1;border:none;background:none;border-radius:9px;padding:8px 4px;font-weight:600;font-size:12px;font-family:var(--disp);color:var(--muted);transition:.16s;position:relative}
+.compact-add .compact-seg button.on{color:#fff;box-shadow:0 1px 3px rgba(20,30,45,.18)}
+.compact-add .compact-seg button.on.t-in{background:var(--personal)}
+.compact-add .compact-seg button.on.t-out{background:var(--liab)}
+.compact-add .compact-seg button.on.t-biz_income{background:var(--biz)}
+.compact-add .compact-seg button.on.t-more{background:var(--ink)}
+.compact-add .compact-amount-input{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}
+.compact-add .compact-sr{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.compact-add .compact-amt-block{text-align:center;padding:7px 0 8px}
+.compact-add .compact-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;font-family:var(--disp);padding:4px 10px;border-radius:20px;margin-bottom:8px}
+.compact-add .compact-badge .dt{width:6px;height:6px;border-radius:2px}
+.compact-add .compact-badge.t-in{background:var(--personal-bg);color:var(--personal)}.compact-add .compact-badge.t-in .dt{background:var(--personal)}
+.compact-add .compact-badge.t-out{background:var(--liab-bg);color:var(--liab)}.compact-add .compact-badge.t-out .dt{background:var(--liab)}
+.compact-add .compact-badge.t-biz{background:var(--biz-bg);color:var(--biz)}.compact-add .compact-badge.t-biz .dt{background:var(--biz)}
+.compact-add .compact-badge.t-asset{background:var(--asset-bg);color:var(--asset)}.compact-add .compact-badge.t-asset .dt{background:var(--asset)}
+.compact-add .compact-badge.t-goal{background:var(--goal-bg);color:var(--goal)}.compact-add .compact-badge.t-goal .dt{background:var(--goal)}
+.compact-add .compact-badge.t-more{background:var(--surface-3);color:var(--ink-2)}.compact-add .compact-badge.t-more .dt{background:var(--muted)}
+.compact-add .compact-amount{font-family:var(--mono);font-weight:600;font-size:38px;line-height:1;letter-spacing:-.03em;transition:color .2s,transform .1s;min-height:42px}
+.compact-add .compact-amount .sgn{font-size:26px;margin-right:2px}.compact-add .compact-amount .cur{font-size:16px;color:var(--muted);margin-left:6px;font-weight:500}
+.compact-add .compact-amount.zero{color:var(--faint)}.compact-add .compact-amount.t-in{color:var(--personal)}.compact-add .compact-amount.t-out{color:var(--liab)}.compact-add .compact-amount.t-biz{color:var(--biz)}.compact-add .compact-amount.t-asset{color:var(--asset)}.compact-add .compact-amount.t-goal{color:var(--goal)}.compact-add .compact-amount.pulse{transform:scale(1.03)}
+.compact-add .compact-preview{margin-top:9px;font-size:12px;color:var(--muted);min-height:17px}.compact-add .compact-preview b{font-family:var(--mono);color:var(--ink-2)}.compact-add .compact-preview .chg{color:var(--liab);font-weight:600}.compact-add .compact-preview .chg.pos{color:var(--personal)}
+.compact-add .compact-details{border-top:1px solid var(--surface-3);padding-top:12px;margin-top:2px}.compact-add .compact-details .field{margin-bottom:10px}.compact-add .compact-details .inp{padding:9px 11px}.compact-add .compact-details .hint{line-height:1.35}
+.compact-add .compact-details #f-explain{margin-bottom:10px;padding:9px 11px!important}
+.compact-add .compact-pre-lbl{font-size:10px;font-family:var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:7px 1px 7px}
+.compact-add .compact-presets{display:flex;gap:7px;overflow-x:auto;padding-bottom:6px;margin:0 -1px;scrollbar-width:none}.compact-add .compact-presets::-webkit-scrollbar{display:none}
+.compact-add .compact-preset{flex:0 0 auto;border:1px solid var(--line-strong);background:var(--surface);border-radius:18px;padding:6px 12px;font-size:12px;font-weight:500;color:var(--ink-2);display:flex;align-items:center;gap:6px;transition:.12s;white-space:nowrap}.compact-add .compact-preset:active{transform:scale(.95);background:var(--surface-2)}.compact-add .compact-preset .d{width:7px;height:7px;border-radius:2px}.compact-add .compact-preset.add{font-size:16px;padding:4px 11px;color:var(--personal)}
+.compact-add .compact-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}.compact-add .compact-key{border:none;background:var(--surface-2);border-radius:12px;padding:12px 0;font-family:var(--mono);font-weight:600;font-size:19px;color:var(--ink);transition:.08s}.compact-add .compact-key:hover{background:var(--surface-3)}.compact-add .compact-key:active{transform:scale(.93);background:var(--line)}
+.compact-add .compact-save{margin-top:11px;width:100%;border:none;border-radius:13px;padding:13px;font-family:var(--disp);font-weight:600;font-size:14.5px;color:#fff;background:var(--ink);transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}.compact-add .compact-save:active{transform:scale(.98)}.compact-add .compact-save.ready.t-in{background:var(--personal)}.compact-add .compact-save.ready.t-out{background:var(--liab)}.compact-add .compact-save.ready.t-biz{background:var(--biz)}.compact-add .compact-save.ready.t-asset{background:var(--asset)}.compact-add .compact-save.ready.t-goal{background:var(--goal)}.compact-add .compact-save:disabled{opacity:.45}
+.compact-add .compact-bal{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:10px 13px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}.compact-add .compact-bal .l{font-size:11.5px;color:var(--muted)}.compact-add .compact-bal .sync{font-size:10.5px;color:var(--personal);margin-top:2px}.compact-add .compact-bal .v{font-family:var(--mono);font-weight:700;font-size:16px;text-align:right;white-space:nowrap}
+.compact-add-more .grp-lbl{font-size:10px;font-family:var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:11px 1px 6px}.compact-add-more .opt{display:flex;align-items:center;gap:10px;padding:10px;border-radius:11px;border:1px solid var(--line);background:var(--surface);margin-bottom:6px;width:100%;text-align:left;color:var(--ink)}.compact-add-more .opt:active{background:var(--surface-2)}.compact-add-more .opt .bar{width:4px;height:24px;border-radius:2px;flex:0 0 auto}.compact-add-more .opt .tt{font-weight:600;font-size:13px;font-family:var(--disp)}.compact-add-more .opt .td{font-size:10.5px;color:var(--muted);margin-top:1px}
+@media (max-width:640px){.compact-add-shell{max-width:none}.compact-add{border:none;box-shadow:none;background:transparent;padding:4px 2px 16px}.compact-add .compact-details .inp{font-size:16px;padding:10px 11px}.compact-add .compact-pad{margin-top:8px}.compact-add .compact-key{padding:11px 0}}
+
+/* ---- Планшет ---- */
+@media (max-width:900px){
+  .main{padding:22px 20px 40px}
+  .split{grid-template-columns:1fr}
+  .split .side.biz{border-left:none;border-top:1px solid var(--line)}
+  .stats{grid-template-columns:1fr 1fr}
+  .two,.row2,.row3{grid-template-columns:1fr}
+  .main .grid{grid-template-columns:1fr!important}
+  .types{grid-template-columns:1fr 1fr}
+  .page-head{align-items:flex-start}
+}
+
+/* ---- Телефон ---- */
+@media (max-width:640px){
+  body{font-size:15px}
+  .app{grid-template-columns:1fr}
+  .nav{display:none}
+  .main{padding:14px 13px 96px}            /* место под нижнюю навигацию */
+
+  /* верхняя шапка */
+  .mobile-top{
+    display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:30;
+    background:var(--surface);border-bottom:1px solid var(--line);
+    padding:11px 15px;padding-top:calc(11px + env(safe-area-inset-top))
+  }
+  .mobile-top .mark{width:28px;height:28px;border-radius:8px;background:var(--ink);color:#fff;display:grid;place-items:center;font-family:var(--disp);font-weight:700;font-size:14px}
+  .mobile-top .ttl{font-family:var(--disp);font-weight:600;font-size:16px}
+  .mobile-top .spacer{flex:1}
+  .mobile-top .top-add{background:var(--personal);color:#fff;border:none;border-radius:9px;padding:8px 13px;font-weight:600;font-size:13.5px;display:flex;align-items:center;gap:5px}
+  .mobile-top .top-add svg{width:15px;height:15px;stroke:#fff}
+  .mobile-top .theme-toggle{width:34px;height:34px;background:var(--surface-2)}
+
+  /* нижняя навигация */
+  .bottom-nav{
+    display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;
+    background:var(--surface);border-top:1px solid var(--line);
+    padding:6px 6px calc(6px + env(safe-area-inset-bottom));
+    justify-content:space-around;align-items:flex-end;
+    box-shadow:0 -4px 20px -12px rgba(20,30,45,.25)
+  }
+  .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;padding:6px 2px;color:var(--faint);font-size:10.5px;font-weight:500}
+  .bn-item svg{width:22px;height:22px;stroke:currentColor}
+  .bn-item.on{color:var(--ink)}
+  .bn-center{flex:0 0 auto;transform:translateY(-10px)}
+  .bn-center .fab{width:54px;height:54px;border-radius:17px;background:var(--personal);color:#fff;display:grid;place-items:center;box-shadow:0 8px 20px -6px rgba(14,124,107,.55);margin-bottom:2px}
+  .bn-center .fab svg{width:26px;height:26px;stroke:#fff;stroke-width:2}
+  .bn-center span{color:var(--personal);font-weight:600}
+
+  /* заголовки страниц компактнее */
+  .page-head{margin-bottom:16px}
+  .page-head .t h1{font-size:20px}
+  .page-head .t p{font-size:12.5px}
+
+  /* сплит-баланс компактнее */
+  .split .side{padding:18px}
+  .side .amt{font-size:28px}
+  .stats{grid-template-columns:1fr 1fr;gap:10px}
+  .stat{padding:13px}
+  .stat .val{font-size:19px}
+  .types{grid-template-columns:1fr}
+  .type-btn{flex-direction:row;align-items:center;gap:10px}
+  .type-btn .bar{margin-bottom:0;width:4px;height:30px}
+
+  /* крупные поля — чтобы iOS не зумил (>=16px) */
+  .inp,select.inp,textarea.inp{font-size:16px;padding:12px 13px}
+  .btn{padding:11px 15px;font-size:14px}
+  .btn.sm{padding:8px 12px;font-size:13px}
+
+  /* таблицы -> карточки */
+  table thead{display:none}
+  table,tbody,tr,td{display:block;width:100%}
+  tbody tr{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--surface);padding:4px 2px}
+  tbody tr:hover{background:var(--surface)}
+  td{border:none!important;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 13px;text-align:right}
+  td::before{content:attr(data-label);color:var(--muted);font-size:12px;font-weight:500;text-align:left;flex:0 0 auto}
+  td.no-label{justify-content:flex-end}
+  td.no-label::before{content:""}
+  td .num,td.num{text-align:right}
+
+  /* модалки -> нижняя шторка */
+  .modal-bg{align-items:flex-end;padding:0}
+  .modal{max-width:100%;width:100%;border-radius:20px 20px 0 0;max-height:92vh;animation:sheetUp .22s ease}
+  .modal-h{padding:16px 18px}
+  .modal-b{padding:18px}
+  .modal-f{padding:0 18px 18px;padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+  .modal-f .btn{flex:1;justify-content:center}
+
+  /* полосы со счетами — приятная прокрутка */
+  .card-b[style*="overflow-x"]{scroll-snap-type:x mandatory}
+  .card-b[style*="overflow-x"]>div{scroll-snap-align:start}
+
+  .toast-wrap{bottom:calc(96px + env(safe-area-inset-bottom))}
+  .reminder{flex-wrap:wrap}
+  .reminder .txt{flex:1 1 100%}
+  .filters{gap:7px}
+}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div id="app"></div>
+<div id="modal-root"></div>
+<div class="toast-wrap" id="toast-root"></div>
+
+<script>
+window.PFBackendReady=new Promise(resolve=>{window.__resolvePFBackendReady=resolve;});
+</script>
+<script type="module">
+(async()=>{
+  try{
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+
+    const SUPABASE_URL = 'https://dnbqxitbyytuirkpmaji.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRuYnF4aXRieXl0dWlya3BtYWppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5NzcxMjIsImV4cCI6MjEwMDU1MzEyMn0.lpyg96S8j1CcbfQEwZ2ZSeIeBw2t2uCA29nx_SgAIjs';
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }
+    });
+    const USERNAME_DOMAIN = 'pfinance.flexico.by';
+    function usernameToEmail(username){
+      const value=String(username||'').trim().toLowerCase();
+      if(!/^[a-z0-9._-]{3,32}$/.test(value))throw new Error('invalid username');
+      return value+'@'+USERNAME_DOMAIN;
+    }
+
+    window.PFBackend = {
+      user: null,
+      _cbs: [],
+      onChange(cb){ this._cbs.push(cb); },
+      async signInWithUsernamePassword(username,password){
+        let email;
+        try{ email=usernameToEmail(username); }
+        catch(e){ return { error:e }; }
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        return { error };
+      },
+      async signOut(){ return await sb.auth.signOut(); },
+      async load(){
+        const { data:{ user } } = await sb.auth.getUser();
+        if(!user) return null;
+        const { data, error } = await sb.from('app_state').select('data').eq('user_id', user.id).maybeSingle();
+        if(error) throw error;
+        return data ? data.data : null;
+      },
+      async save(state){
+        const { data:{ user } } = await sb.auth.getUser();
+        if(!user) throw new Error('not authenticated');
+        const { error } = await sb.from('app_state')
+          .upsert({ user_id:user.id, data:state }, { onConflict:'user_id' });
+        if(error) throw error;
+      }
+    };
+
+    const notify=user=>{
+      window.PFBackend.user=user||null;
+      window.PFBackend._cbs.forEach(cb=>{ try{ cb(window.PFBackend.user); }catch(_){} });
+    };
+    sb.auth.onAuthStateChange((_e,session)=>notify(session?.user||null));
+    const { data:{ user } } = await sb.auth.getUser();
+    notify(user||null);
+    window.__resolvePFBackendReady(window.PFBackend);
+  }catch(e){
+    console.error('Supabase недоступен:',e);
+    window.__resolvePFBackendReady(null);
+  }
+})();
+</script>
+
+<script>
+"use strict";
+/* =========================================================
+   ХРАНИЛИЩЕ (Supabase с деградацией в память)
+   ========================================================= */
+const KEY="pf:state:v3";
+const Store={
+  async load(){
+    try{ if(window.PFBackend){ const r=await window.PFBackend.load(); if(r) return r; } }
+    catch(e){ /* оффлайн/пауза — уходим в память */ }
+    try{ if(window.__mem) return JSON.parse(window.__mem); }catch(e){}
+    return null;
+  },
+  async save(state){
+    const s=JSON.stringify(state);
+    window.__mem=s;
+    try{ if(window.PFBackend) await window.PFBackend.save(state); }
+    catch(e){ toast("Нет связи с облаком — изменения сохранены локально"); }
+  }
+};
+
+/* =========================================================
+   ДАННЫЕ ПО УМОЛЧАНИЮ (чистая база в BYN)
+   ========================================================= */
+const uid=()=>Math.random().toString(36).slice(2,9);
+const TODAY=()=>new Date().toISOString().slice(0,10);
+function daysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10);}
+function daysAhead(n){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function defaultPresets(){return [
+  {id:"p1",label:"Продукты",type:"out",cat:"Продукты"},
+  {id:"p2",label:"Выручка Толбухина",type:"biz_income",biz:"biz-tolbukhina",cat:"Выручка"},
+  {id:"p3",label:"Аренда помещения",type:"biz_expense",cat:"Аренда помещения"},
+  {id:"p4",label:"ЗП сотрудникам",type:"biz_expense",cat:"ЗП сотрудникам"},
+];}
+
+function seed(){
+  const catIncome=["Зарплата / основной доход","Подработка","Подарки","Проценты по вкладу","Прочее"];
+  const catExpense=["Продукты","Кафе и рестораны","Транспорт","Аренда жилья","Коммуналка","Здоровье","Одежда","Развлечения","Путешествия","Прочее"];
+  const catBizIn=["Выручка","Прочий доход бизнеса"];
+  const catBizOut=["ЗП сотрудникам","Аренда помещения","Закупка товара","Обслуживание оборудования","Реклама","Банковская комиссия","Налоги","Ремонт / инвентарь","Прочее"];
+
+  const currencies=[
+    {code:"BYN",symbol:"Br",rate:1},
+    {code:"USD",symbol:"$",rate:2.8853},
+    {code:"EUR",symbol:"€",rate:3.2928},
+    {code:"RUB",symbol:"₽",rate:0.036854},
+  ];
+
+  const legalEntities=[
+    {id:"le-ip",name:"ИП",type:"ip",archived:false},
+    {id:"le-ooo",name:"ООО",type:"ooo",archived:false},
+    {id:"le-cash",name:"Наличные",type:"cash",archived:false,system:true},
+  ];
+  const businesses=[
+    {id:"biz-coffee",name:"Кофейня",emoji:"☕",legalEntityId:"le-ip",cashOpening:0,acceptsCash:false,archived:false},
+    {id:"biz-vending",name:"Вендинг",emoji:"🥤",legalEntityId:"le-ip",cashOpening:0,acceptsCash:false,archived:false},
+    {id:"biz-tolbukhina",name:"Студия Толбухина, 2",emoji:"🧘",legalEntityId:"le-ip",cashOpening:0,acceptsCash:true,archived:false},
+    {id:"biz-kuibysheva",name:"Студия Куйбышева, 22",emoji:"🧘",legalEntityId:"le-ooo",cashOpening:0,acceptsCash:true,archived:false},
+    {id:"biz-masherova",name:"Студия Машерова, 11",emoji:"🧘",legalEntityId:"le-ooo",cashOpening:0,acceptsCash:true,archived:false},
+    {id:"biz-ooo-common",name:"Общие расходы ООО",emoji:"🏢",legalEntityId:"le-ooo",cashOpening:0,acceptsCash:false,archived:false,technical:true},
+  ];
+  const accounts=[
+    {id:"acc-personal-card",name:"Личная карта",bankName:"",emoji:"💳",kind:"card",currency:"BYN",opening:0,limit:0,archived:false,scope:"personal",legalEntityId:null,businessIds:[]},
+    {id:"acc-personal-cash",name:"Личные наличные",bankName:"",emoji:"💵",kind:"cash",currency:"BYN",opening:0,limit:0,archived:false,scope:"personal",legalEntityId:null,businessIds:[]},
+    {id:"acc-ip-paritet",name:"ИП · Паритет Банк",bankName:"Паритет Банк",emoji:"🏦",kind:"card",currency:"BYN",opening:0,limit:0,archived:false,scope:"business",legalEntityId:"le-ip",businessIds:["biz-coffee"]},
+    {id:"acc-ip-belarusbank",name:"ИП · Беларусбанк",bankName:"Беларусбанк",emoji:"🏦",kind:"card",currency:"BYN",opening:0,limit:0,archived:false,scope:"business",legalEntityId:"le-ip",businessIds:["biz-vending"]},
+    {id:"acc-ip-alfa",name:"ИП · Альфа-Банк",bankName:"Альфа-Банк",emoji:"🏦",kind:"card",currency:"BYN",opening:0,limit:0,archived:false,scope:"business",legalEntityId:"le-ip",businessIds:["biz-tolbukhina"]},
+    {id:"acc-ooo-alfa",name:"ООО · Альфа-Банк",bankName:"Альфа-Банк",emoji:"🏦",kind:"card",currency:"BYN",opening:0,limit:0,archived:false,scope:"business",legalEntityId:"le-ooo",businessIds:["biz-kuibysheva","biz-masherova","biz-ooo-common"]},
+    {id:"acc-studios-cash",name:"Наличные · 3 студии",bankName:"Общая касса",emoji:"💵",kind:"cash",currency:"BYN",opening:0,limit:0,archived:false,scope:"business",legalEntityId:"le-cash",businessIds:["biz-tolbukhina","biz-kuibysheva","biz-masherova"],sharedCash:true,system:true},
+  ];
+
+  return {
+    settings:{baseCurrency:"BYN",reminderTime:"20:00",notify:false,theme:"auto"},
+    currencies,legalEntities,accounts,businesses,
+    categories:{in:catIncome,out:catExpense,bizIn:catBizIn,bizOut:catBizOut},
+    tx:[], debts:[], goals:[], presets:defaultPresets(),
+    meta:{lastEntryDate:null,lastNotifiedDate:null,lastUsed:{},created:TODAY(),modelVersion:6},
+    ui:{view:"overview",txFilter:"all",txPeriod:"all",txAccount:null,txMonth:null,overviewPeriod:"month"}
+  };
+}
+
+/* =========================================================
+   КУРСЫ НАЦИОНАЛЬНОГО БАНКА РБ
+   ========================================================= */
+async function updateRatesFromNBRB(){
+  try{
+    const r=await fetch("https://api.nbrb.by/exrates/rates?periodicity=0",{cache:"no-store"});
+    if(!r.ok)throw new Error("NBRB HTTP "+r.status);
+    const rows=await r.json();
+    const bynPerUnit={BYN:1};
+    for(const row of rows){
+      const code=String(row.Cur_Abbreviation||"").toUpperCase();
+      const scale=Number(row.Cur_Scale)||1;
+      const official=Number(row.Cur_OfficialRate);
+      if(code&&Number.isFinite(official)&&official>0)bynPerUnit[code]=official/scale;
+    }
+    const base=baseCode();
+    const baseRate=bynPerUnit[base];
+    if(!baseRate)throw new Error("Базовая валюта отсутствует в курсах НБРБ");
+    let changed=false;
+    for(const c of S.currencies||[]){
+      const n=bynPerUnit[c.code];
+      if(!n)continue;
+      const next=c.code===base?1:n/baseRate;
+      if(Math.abs((Number(c.rate)||0)-next)>1e-12){c.rate=next;changed=true;}
+    }
+    const bc=curObj(base);if(bc)bc.rate=1;
+    S.meta=S.meta||{};
+    S.meta.ratesUpdated=new Date().toISOString();
+    persist();
+    return true;
+  }catch(e){
+    console.warn("Не удалось обновить курсы НБРБ:",e);
+    return false;
+  }
+}
+
+/* =========================================================
+   СОСТОЯНИЕ + СОХРАНЕНИЕ
+   ========================================================= */
+let S=null; let saveTimer=null;
+let themeMedia=null,themeMediaBound=false;
+let addFormTouched=new Set();
+function persist(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>Store.save(S),120); }
+function haptic(ms){if(navigator.vibrate){try{navigator.vibrate(ms);}catch(_){}}}
+function themeMode(){return S?.settings?.theme||"auto";}
+function themeIsDark(){return themeMode()==="dark"||(themeMode()==="auto"&&!!window.matchMedia?.('(prefers-color-scheme:dark)').matches);}
+function applyTheme(){
+  const dark=themeIsDark(),root=document.documentElement;
+  if(dark)root.setAttribute("data-theme","dark");else root.removeAttribute("data-theme");
+  const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute("content",dark?"#0E1116":"#161A21");
+}
+function setupThemeListener(){
+  if(themeMediaBound||!window.matchMedia)return;themeMediaBound=true;themeMedia=window.matchMedia('(prefers-color-scheme:dark)');
+  const onChange=()=>{if(themeMode()==="auto"){applyTheme();if(S)render();}};
+  if(themeMedia.addEventListener)themeMedia.addEventListener('change',onChange);else if(themeMedia.addListener)themeMedia.addListener(onChange);
+}
+function setTheme(mode){if(!["auto","light","dark"].includes(mode))return;S.settings.theme=mode;applyTheme();persist();render();}
+function cycleTheme(){const modes=["auto","light","dark"],i=modes.indexOf(themeMode());setTheme(modes[(i+1)%modes.length]);}
+function themeButtonHtml(){const dark=document.documentElement.getAttribute("data-theme")==="dark";return '<button class="theme-toggle" data-act="cycle-theme" title="Тема: '+esc(themeMode()==="auto"?'авто':themeMode()==="dark"?'тёмная':'светлая')+'" aria-label="Переключить тему">'+(dark?'☀':'☾')+'</button>';}
+function resetAddFormSession(){addFormTouched.clear();}
+function ensureUxState(){
+  let changed=false;
+  S.settings=S.settings||{};if(!["auto","light","dark"].includes(S.settings.theme)){S.settings.theme="auto";changed=true;}
+  S.meta=S.meta||{};if(!S.meta.lastUsed||typeof S.meta.lastUsed!=="object"){S.meta.lastUsed={};changed=true;}
+  if(!Array.isArray(S.presets)){S.presets=defaultPresets();changed=true;}
+  S.ui=S.ui||{};
+  if(!S.ui.view){S.ui.view="overview";changed=true;}
+  if(!S.ui.txFilter){S.ui.txFilter="all";changed=true;}
+  if(!S.ui.txPeriod){S.ui.txPeriod="all";changed=true;}
+  if(!("txAccount" in S.ui)){S.ui.txAccount=null;changed=true;}
+  if(!("txMonth" in S.ui)){S.ui.txMonth=null;changed=true;}
+  if(!["month","quarter","year","all"].includes(S.ui.overviewPeriod)){S.ui.overviewPeriod="month";changed=true;}
+  return changed;
+}
+
+/* =========================================================
+   ВЫЧИСЛЕНИЯ
+   ========================================================= */
+/* --- Валюты --- */
+function baseCode(){return (S.settings&&S.settings.baseCurrency)||"BYN";}
+function curObj(code){return (S.currencies||[]).find(c=>c.code===code);}
+function sym(code){const c=curObj(code);return c?c.symbol:(code||"");}
+function rate(code){const c=curObj(code);return c?(+c.rate||1):1;}
+function toBase(amt,code){return (Number(amt)||0)*rate(code||baseCode());}
+const C=()=> sym(baseCode());
+function fmt(n,sign,code){
+  code=code||baseCode();
+  const v=Math.round((Number(n)||0)*100)/100;
+  const s=new Intl.NumberFormat("ru-RU",{minimumFractionDigits:2,maximumFractionDigits:2}).format(Math.abs(v));
+  const pre=(sign&&v>0)?"+":(v<0?"−":"");
+  return pre+s+" "+sym(code);
+}
+/* --- Счета --- */
+function accById(id){return (S.accounts||[]).find(a=>a.id===id);}
+function entityById(id){return (S.legalEntities||[]).find(x=>x.id===id);}
+function bizById(id){return (S.businesses||[]).find(b=>b.id===id);}
+function entityTypeLabel(type){return type==="ooo"?"ООО":type==="cash"?"Общая касса":"ИП";}
+function ownerLabel(a){if(!a)return "—";if(a.scope!=="business")return "Личный";const e=entityById(a.legalEntityId);return e?e.name:"Юрлицо не указано";}
+function isPersonalAccount(a){return !!a&&a.scope!=="business";}
+function isBusinessAccount(a){return !!a&&a.scope==="business";}
+function isCashPoolAccount(a){return !!a&&a.scope==="business"&&(a.sharedCash===true||a.kind==="cash"&&a.legalEntityId==="le-cash");}
+function isBankBusinessAccount(a){return isBusinessAccount(a)&&!isCashPoolAccount(a);}
+function personalAccounts(){return activeAccounts().filter(isPersonalAccount);}
+function businessAccounts(){return activeAccounts().filter(isBusinessAccount);}
+function cashPoolAccounts(){return activeAccounts().filter(isCashPoolAccount);}
+function businessAccountsForBiz(id,paymentMethod){
+  const b=bizById(id);if(!b)return [];
+  const list=activeAccounts().filter(a=>{
+    if(!(a.businessIds||[]).includes(id))return false;
+    if(isCashPoolAccount(a))return !!b.acceptsCash;
+    return isBankBusinessAccount(a)&&a.legalEntityId===b.legalEntityId;
+  });
+  if(paymentMethod==="cash")return list.filter(isCashPoolAccount);
+  if(paymentMethod==="bank")return list.filter(isBankBusinessAccount);
+  return list;
+}
+function accountAvailableForBiz(a,b,paymentMethod){
+  if(!a||!b||a.archived||!(a.businessIds||[]).includes(b.id))return false;
+  if(paymentMethod==="cash")return !!b.acceptsCash&&isCashPoolAccount(a);
+  return isBankBusinessAccount(a)&&a.legalEntityId===b.legalEntityId;
+}
+function txPaymentMethod(t){
+  if(t&&t.paymentMethod)return t.paymentMethod;
+  const a=t&&(t.account?accById(t.account):t.businessAccount?accById(t.businessAccount):null);
+  return isCashPoolAccount(a)?"cash":"bank";
+}
+function accCur(t){const a=t&&t.account?accById(t.account):null;return a?a.currency:baseCode();}
+function hasAccountTx(id){return (S.tx||[]).some(t=>t.account===id||t.businessAccount===id||t.fromAccount===id||t.toAccount===id);}
+function hasBizTx(id){return (S.tx||[]).some(t=>t.biz===id||(t.type==="personal_biz_expense"&&(t.allocations||[]).some(a=>a.biz===id)));}
+function hasEntityLinks(id){return (S.businesses||[]).some(b=>b.legalEntityId===id)||(S.accounts||[]).some(a=>a.legalEntityId===id);}
+function activeAccounts(){return (S.accounts||[]).filter(a=>!a.archived);}
+function activeBusinesses(){return (S.businesses||[]).filter(b=>!b.archived);}
+function cashOpeningForAccount(a){
+  if(!isCashPoolAccount(a))return 0;
+  return (a.businessIds||[]).map(bizById).filter(Boolean).reduce((sum,b)=>sum+(Number(b.cashOpening)||0),0);
+}
+function accountBalance(id){
+  const a=accById(id); if(!a)return 0;
+  let v=(Number(a.opening)||0)+cashOpeningForAccount(a);
+  for(const t of S.tx||[]){
+    if(t.type==="transfer"||t.type==="entity_transfer"||t.type==="cash_transfer"){
+      if(t.fromAccount===id)v-=Number(t.amount)||0;
+      if(t.toAccount===id)v+=Number(t.toAmount)||0;
+      continue;
+    }
+    if((t.type==="draw"||t.type==="contribution")&&t.businessAccount===id){
+      const ba=Number(t.businessAmount)||0;
+      if(t.type==="draw")v-=ba;
+      else v+=ba;
+      continue;
+    }
+    if(t.type==="biz_adjustment"&&t.account===id){v+=Number(t.delta)||0;continue;}
+    if(t.account!==id)continue;
+    if(t.type==="in"||t.type==="draw"||t.type==="biz_income"||t.type==="debt_borrow"||t.type==="debt_repayment_in")v+=Number(t.amount)||0;
+    else if(t.type==="out"||t.type==="contribution"||t.type==="biz_expense"||t.type==="personal_biz_expense"||t.type==="debt_issue"||t.type==="debt_repayment_out")v-=Number(t.amount)||0;
+    else if(t.type==="account_adjustment")v+=Number(t.delta)||0;
+  }
+  return v;
+}
+function accUsedCredit(id){const b=accountBalance(id);return b<0?-b:0;}
+function accAvailable(id){const a=accById(id);return accountBalance(id)+(Number(a.limit)||0);}
+function accKindLabel(k){return k==="credit"?"кредитка / овердрафт":k==="cash"?"наличные":"расчётный счёт / карта";}
+
+function monthKey(d){return (d||"").slice(0,7);}
+function inThisMonth(d){return monthKey(d)===monthKey(TODAY());}
+
+/* Личный итог — только личные счета. Банковские деньги бизнеса и общая касса считаются отдельно. */
+function personalBalance(){
+  return (S.accounts||[]).filter(isPersonalAccount).reduce((s,a)=>s+toBase(accountBalance(a.id),a.currency),0);
+}
+function businessBankBalance(){
+  return (S.accounts||[]).filter(isBankBusinessAccount).reduce((s,a)=>s+toBase(accountBalance(a.id),a.currency),0);
+}
+function businessCashBalance(){
+  return (S.accounts||[]).filter(isCashPoolAccount).reduce((s,a)=>s+toBase(accountBalance(a.id),a.currency),0);
+}
+function totalCreditUsed(){return (S.accounts||[]).filter(isPersonalAccount).reduce((s,a)=>s+toBase(accUsedCredit(a.id),a.currency),0);}
+function totalAvailable(){return personalAccounts().reduce((s,a)=>s+toBase(accAvailable(a.id),a.currency),0);}
+
+function bizChannelBalance(id,paymentMethod){
+  const b=bizById(id);let v=paymentMethod==="cash"?(Number(b?.cashOpening)||0):0;
+  for(const t of S.tx||[]){if(t.biz!==id)continue;
+    const acc=t.account?accById(t.account):null,bacc=t.businessAccount?accById(t.businessAccount):null;
+    if(t.type==="cash_transfer"){
+      const from=accById(t.fromAccount),to=accById(t.toAccount);
+      if(paymentMethod==="cash"){
+        if(isCashPoolAccount(from))v-=toBase(t.amount,from.currency);
+        if(isCashPoolAccount(to))v+=toBase(t.toAmount,to.currency);
+      }else{
+        if(isBankBusinessAccount(from))v-=toBase(t.amount,from.currency);
+        if(isBankBusinessAccount(to))v+=toBase(t.toAmount,to.currency);
+      }
+      continue;
+    }
+    const method=txPaymentMethod(t);if(method!==paymentMethod)continue;
+    if(t.type==="biz_income")v+=toBase(t.amount,acc?acc.currency:baseCode());
+    else if(t.type==="biz_expense")v-=toBase(t.amount,acc?acc.currency:baseCode());
+    else if(t.type==="draw")v-=toBase(t.businessAmount||t.amount,bacc?bacc.currency:(acc?acc.currency:baseCode()));
+    else if(t.type==="contribution")v+=toBase(t.businessAmount||t.amount,bacc?bacc.currency:(acc?acc.currency:baseCode()));
+    else if(t.type==="biz_adjustment")v+=Number(t.delta)||0;
+  }
+  return v;
+}
+function bizCashBalance(id){return bizChannelBalance(id,"cash");}
+function bizCashlessBalance(id){return bizChannelBalance(id,"bank");}
+function bizBalance(id){return bizCashBalance(id)+bizCashlessBalance(id);}
+function bizTotalBalance(){return businessBankBalance()+businessCashBalance();}
+
+/* Все агрегаты — в базовой валюте (каждая операция конвертируется по валюте счёта) */
+function sumTx(pred){return S.tx.filter(pred).reduce((s,t)=>s+toBase(t.amount, t.account?accCur(t):baseCode()),0);}
+function dateKeyLocal(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function periodRange(period){
+  if(period==="all")return {from:null,to:null};
+  const now=new Date(TODAY()+"T12:00:00");let from,to;
+  if(period==="quarter"){
+    const q=Math.floor(now.getMonth()/3)*3;from=new Date(now.getFullYear(),q,1);to=new Date(now.getFullYear(),q+3,1);
+  }else if(period==="year"){
+    from=new Date(now.getFullYear(),0,1);to=new Date(now.getFullYear()+1,0,1);
+  }else{
+    from=new Date(now.getFullYear(),now.getMonth(),1);to=new Date(now.getFullYear(),now.getMonth()+1,1);
+  }
+  return {from:dateKeyLocal(from),to:dateKeyLocal(to)};
+}
+function inPeriod(date,period){const r=periodRange(period);return !r.from||(date>=r.from&&date<r.to);}
+function periodAgg(period){
+  return {
+    income:sumTx(t=>t.type==="in"&&inPeriod(t.date,period)),
+    expense:sumTx(t=>t.type==="out"&&inPeriod(t.date,period)),
+    draw:sumTx(t=>t.type==="draw"&&t.cat!=="Возмещение личных расходов"&&inPeriod(t.date,period)),
+    contribution:sumTx(t=>t.type==="contribution"&&inPeriod(t.date,period)),
+  };
+}
+function monthAgg(){return periodAgg("month");}
+function netDrawPeriod(period){const a=periodAgg(period);return a.draw-a.contribution;}
+function realIncomePeriod(period){const a=periodAgg(period);return a.income+(a.draw-a.contribution);}
+function netDrawMonth(){return netDrawPeriod("month");}
+function realIncomeMonth(){return realIncomePeriod("month");} // личный + чистый вывод
+
+function debtCurrency(d){return d&&d.currency||baseCode();}
+function debtRemaining(d){return (Number(d.amount)||0)-(d.repaid||[]).reduce((s,r)=>s+(Number(r.amount)||0),0);}
+function debtBaseRemaining(d){return toBase(Math.max(0,debtRemaining(d)),debtCurrency(d));}
+function owedToMe(){return S.debts.filter(d=>d.dir==="in").reduce((s,d)=>s+debtBaseRemaining(d),0);}
+function iOwe(){return S.debts.filter(d=>d.dir==="out").reduce((s,d)=>s+debtBaseRemaining(d),0);}
+function personalBizExpenseForBiz(id){
+  return (S.tx||[]).filter(t=>t.type==="personal_biz_expense").reduce((sum,t)=>{
+    const a=(t.allocations||[]).find(x=>x.biz===id),acc=accById(t.account);
+    return sum+(a?toBase(a.amount,acc?acc.currency:baseCode()):0);
+  },0);
+}
+
+function bizStats(id){
+  return {
+    income: sumTx(t=>t.type==="biz_income"&&t.biz===id),
+    expense: sumTx(t=>t.type==="biz_expense"&&t.biz===id)+personalBizExpenseForBiz(id),
+    draw: sumTx(t=>t.type==="draw"&&t.cat!=="Возмещение личных расходов"&&t.biz===id),
+    contribution: sumTx(t=>t.type==="contribution"&&t.biz===id),
+    cash: bizCashBalance(id),
+    cashless: bizCashlessBalance(id),
+    balance: bizBalance(id),
+  };
+}
+function reconcile(){
+  const issues=[]; const EPS=0.01;
+  for(const pool of cashPoolAccounts()){
+    const poolBal=toBase(accountBalance(pool.id),pool.currency);
+    const perBiz=(pool.businessIds||[]).reduce((sum,id)=>sum+bizCashBalance(id),0);
+    if(Math.abs(poolBal-perBiz)>EPS)
+      issues.push({name:"Касса «"+pool.name+"»",a:poolBal,b:perBiz,diff:poolBal-perBiz});
+  }
+  const tot=bizTotalBalance(),split=businessBankBalance()+businessCashBalance();
+  if(Math.abs(tot-split)>EPS)
+    issues.push({name:"Итог бизнеса (банк+касса)",a:tot,b:split,diff:tot-split});
+  return issues;
+}
+
+/* месячные ряды для графиков (последние 6 месяцев) */
+function monthlySeries(){
+  const out=[]; const now=new Date();
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const key=d.toISOString().slice(0,7);
+    const income=sumTx(t=>t.type==="in"&&monthKey(t.date)===key);
+    const expense=sumTx(t=>t.type==="out"&&monthKey(t.date)===key);
+    const net=income+ (sumTx(t=>t.type==="draw"&&monthKey(t.date)===key)-sumTx(t=>t.type==="contribution"&&monthKey(t.date)===key)) - expense;
+    out.push({key,label:d.toLocaleDateString("ru-RU",{month:"short"}),income,expense,net});
+  }
+  return out;
+}
+/* средний чистый личный поток за месяц (для прогноза) */
+function avgMonthlyNet(){
+  const s=monthlySeries().filter(m=>m.income||m.expense);
+  if(!s.length)return 0;
+  return s.reduce((a,m)=>a+m.net,0)/s.length;
+}
+
+/* =========================================================
+   ИКОНКИ
+   ========================================================= */
+const I={
+  overview:'<path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/>',
+  add:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+  tx:'<path d="M4 7h16M4 12h16M4 17h10"/>',
+  debt:'<path d="M17 7l-10 10M7 7h10v10"/>',
+  biz:'<path d="M3 9l9-6 9 6v11H3z"/><path d="M9 20v-6h6v6"/>',
+  forecast:'<path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v5h-5"/>',
+  goal:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1l-.3-2.5h-4l-.3 2.5a7 7 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5a7 7 0 0 0 .1-1z"/>',
+  in:'<path d="M12 5v14M5 12l7 7 7-7"/>',
+  out:'<path d="M12 19V5M5 12l7-7 7 7"/>',
+  bell:'<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  wallet:'<path d="M3 7h18v12H3z"/><path d="M16 13h2"/><path d="M3 7l3-3h11l1 3"/>',
+  card:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/>',
+  trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  edit:'<path d="M4 20h4L18 10l-4-4L4 16z"/><path d="M13 5l4 4"/>',
+};
+function svg(p,cls){return '<svg class="'+(cls||'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';}
+
+/* =========================================================
+   РЕНДЕР: КАРКАС
+   ========================================================= */
+const NAV=[
+  ["overview","Обзор",I.overview],
+  ["accounts","Счета",I.card],
+  ["add","Внести операцию",I.add],
+  ["tx","Операции",I.tx],
+  ["debts","Долги и кредиты",I.debt],
+  ["business","Бизнес",I.biz],
+  ["forecast","Прогноз",I.forecast],
+  ["goals","Цели",I.goal],
+  ["settings","Настройки",I.settings],
+];
+function render(){
+  const app=document.getElementById("app");
+  const nav=NAV.map(([id,label,ic])=>
+    '<button class="nav-item '+(S.ui.view===id?'on':'')+'" data-act="nav" data-v="'+id+'">'+svg(ic)+'<span>'+label+'</span></button>'
+  ).join("");
+
+  // текущий заголовок для мобильной шапки
+  const cur=NAV.find(n=>n[0]===S.ui.view);
+  const curTitle=cur?cur[1]:"Финансы";
+
+  // нижняя навигация (телефон): 4 основных + центральная «Внести» + «Ещё»
+  const moreViews=["tx","business","forecast","goals","settings"];
+  const moreOn=moreViews.includes(S.ui.view);
+  const bn=(id,label,ic)=>'<button class="bn-item '+(S.ui.view===id?'on':'')+'" data-act="nav" data-v="'+id+'">'+svg(ic)+'<span>'+label+'</span></button>';
+  const bottomNav=
+    '<nav class="bottom-nav">'+
+      bn("overview","Обзор",I.overview)+
+      bn("accounts","Счета",I.card)+
+      '<button class="bn-item bn-center" data-act="nav" data-v="add"><span class="fab">'+svg(I.add)+'</span><span>Внести</span></button>'+
+      bn("debts","Долги",I.debt)+
+      '<button class="bn-item '+(moreOn?'on':'')+'" data-act="more-menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg><span>Ещё</span></button>'+
+    '</nav>';
+
+  app.innerHTML=
+  '<div class="mobile-top"><div class="mark">'+esc(sym(baseCode()))+'</div><div class="ttl">'+esc(curTitle)+'</div><div class="spacer"></div>'+themeButtonHtml()+
+    '<button class="top-add" data-act="nav" data-v="add">'+svg(I.add)+'Внести</button></div>'+
+  '<div class="app">'+
+    '<aside class="nav">'+
+      '<div class="brand"><div class="mark">'+esc(sym(baseCode()))+'</div><div><b>Финансы</b><small>личный контроль</small></div>'+themeButtonHtml()+'</div>'+
+      nav+
+      '<div class="nav-sep"></div>'+
+      '<button class="nav-item" data-act="nav" data-v="add">'+svg(I.add)+'<span>Быстрая запись</span></button>'+
+      '<div class="nav-foot">Данные защищены Supabase RLS и сохраняются в вашем облачном профиле.</div>'+
+    '</aside>'+
+    '<main class="main" id="main"></main>'+
+  '</div>'+
+  bottomNav;
+
+  const m=document.getElementById("main");
+  const v=S.ui.view;
+  if(v==="overview")m.innerHTML=viewOverview();
+  else if(v==="accounts")m.innerHTML=viewAccounts();
+  else if(v==="add")m.innerHTML=viewAdd();
+  else if(v==="tx")m.innerHTML=viewTx();
+  else if(v==="debts")m.innerHTML=viewDebts();
+  else if(v==="business")m.innerHTML=viewBusiness();
+  else if(v==="forecast")m.innerHTML=viewForecast();
+  else if(v==="goals")m.innerHTML=viewGoals();
+  else if(v==="settings")m.innerHTML=viewSettings();
+  window.scrollTo(0,0);
+}
+
+/* =========================================================
+   ВИД: ОБЗОР
+   ========================================================= */
+function viewOverview(){
+  const pb=personalBalance();
+  const bb=bizTotalBalance();
+  const period=S.ui.overviewPeriod||"month";
+  const a=periodAgg(period);
+  const nd=netDrawPeriod(period);
+  const periodText={month:"за месяц",quarter:"за квартал",year:"за год",all:"за всё время"}[period];
+  const periodShort={month:"МЕС",quarter:"КВАРТАЛ",year:"ГОД",all:"ВСЁ ВРЕМЯ"}[period];
+  const rem=(S.meta.lastEntryDate!==TODAY());
+  const banner=rem?
+    '<div class="reminder"><span class="dot"></span><div class="txt"><b>Сегодня ещё нет записей</b><span>Внесите доходы и расходы за день, пока не забылось.</span></div>'+ 
+    '<button class="btn" data-act="nav" data-v="add">Внести операцию</button>'+ 
+    '<button class="x" data-act="dismiss-reminder">✕</button></div>':"";
+  const periodControl='<div class="filters" style="justify-content:flex-end;margin-top:-4px"><span class="eyebrow">Период</span><div class="seg">'+
+    [['month','Месяц'],['quarter','Квартал'],['year','Год'],['all','Всё']].map(x=>'<button class="'+(period===x[0]?'on':'')+'" data-act="overview-period" data-p="'+x[0]+'">'+x[1]+'</button>').join('')+'</div></div>';
+
+  const series=monthlySeries();
+  const chart=barChart(series);
+  const upcoming=S.debts.map(d=>({d,rem:debtRemaining(d)})).filter(x=>x.rem>0)
+    .sort((x,y)=>(x.d.due||"").localeCompare(y.d.due||"")).slice(0,4);
+  const upHtml=upcoming.length? upcoming.map(({d,rem})=>{
+    const dd=dueLabel(d.due);
+    return '<div class="list-row"><div class="avatar" style="background:'+(d.dir==="in"?'var(--asset-bg)':'var(--liab-bg)')+';color:'+(d.dir==="in"?'var(--asset)':'var(--liab)')+'">'+(d.dir==="in"?'←':'→')+'</div>'+ 
+      '<div><div style="font-weight:500">'+esc(d.who)+'</div><div class="fs12 muted">'+(d.dir==="in"?'вернут вам':'вы должны')+' · '+dd.txt+'</div></div>'+ 
+      '<div class="spacer"></div><div class="num '+(d.dir==="in"?'blue':'neg')+'" style="font-weight:600">'+fmt(rem,false,debtCurrency(d))+'</div></div>';
+  }).join(""):'<div class="empty" style="padding:20px"><b>Долгов нет</b><span class="fs13">Всё закрыто.</span></div>';
+
+  const gsorted=[...S.goals].sort((a,b)=>(b.saved/b.target)-(a.saved/a.target)).slice(0,3);
+  const goalsHtml=gsorted.length? gsorted.map(g=>{
+    const p=Math.min(100,Math.round(g.saved/g.target*100));
+    return '<div style="margin-bottom:13px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span style="font-weight:500">'+esc(g.name)+'</span><span class="mono muted">'+p+'%</span></div>'+ 
+      '<div class="prog"><span style="width:'+p+'%;background:var(--goal)"></span></div>'+ 
+      '<div class="fs12 muted mono" style="margin-top:4px">'+fmt(g.saved)+' из '+fmt(g.target)+'</div></div>';
+  }).join(""):'<div class="empty" style="padding:16px"><span class="fs13">Целей пока нет.</span></div>';
+
+  return head("Обзор","Общая картина ваших финансов на сегодня")+
+  periodControl+banner+
+  '<div class="split" style="margin-bottom:16px">'+
+    '<div class="side personal">'+
+      '<div class="lbl"><span class="tag"></span>Ваши личные деньги</div>'+ 
+      '<div class="hint">Сумма только по личным счетам, без расчётных счетов ИП и ООО.</div>'+ 
+      '<div class="amt">'+fmt(pb)+'</div>'+ 
+      '<div class="sub"><div><span class="k">ДОСТУПНО С ЛИМИТАМИ</span><span class="v">'+fmt(totalAvailable())+'</span></div>'+ 
+      '<div><span class="k">ДОХОД / '+periodShort+'</span><span class="v pos">'+fmt(a.income,true)+'</span></div>'+ 
+      '<div><span class="k">РАСХОДЫ / '+periodShort+'</span><span class="v neg">'+fmt(a.expense)+'</span></div>'+ 
+      '<div><span class="k">ЧИСТЫЙ ВЫВОД / '+periodShort+'</span><span class="v amber">'+fmt(nd,true)+'</span></div></div>'+ 
+    '</div>'+ 
+    '<div class="side biz">'+
+      '<div class="lbl"><span class="tag"></span>Деньги бизнеса в обороте</div>'+ 
+      '<div class="hint">Банковские остатки ИП/ООО и наличные трёх студий. Общий счёт ООО и общая касса учитываются по одному разу.</div>'+ 
+      '<div class="amt">'+fmt(bb)+'</div>'+ 
+      '<div class="sub"><div><span class="k">БАНК ИП/ООО</span><span class="v">'+fmt(businessBankBalance())+'</span></div>'+ 
+      '<div><span class="k">НАЛИЧНЫЕ СТУДИЙ</span><span class="v">'+fmt(businessCashBalance())+'</span></div>'+ 
+      '<div><span class="k">ВЫВЕДЕНО / '+periodShort+'</span><span class="v">'+fmt(a.draw)+'</span></div>'+ 
+      '<div><span class="k">ВОЗВРАЩЕНО / '+periodShort+'</span><span class="v">'+fmt(a.contribution)+'</span></div></div>'+ 
+    '</div>'+ 
+  '</div>'+ 
+  '<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Счета</h3><button class="btn ghost sm" data-act="nav" data-v="accounts">Управлять →</button></div>'+ 
+    '<div class="card-b" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:14px">'+
+    (activeAccounts().map(acc=>{const b=accountBalance(acc.id);const used=accUsedCredit(acc.id);
+      return '<div class="clickable" data-act="open-account-tx" data-id="'+acc.id+'" style="flex:0 0 auto;min-width:150px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)">'+
+        '<div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">'+acc.emoji+' '+esc(acc.name)+'</div>'+ 
+        '<div class="mono" style="font-weight:700;font-size:17px;margin-top:5px;color:'+(b<0?'var(--liab)':'var(--ink)')+'">'+fmt(b,false,acc.currency)+'</div>'+ 
+        (acc.limit>0?'<div class="fs12 muted mono">'+(used>0?'долг '+fmt(used,false,acc.currency)+' · ':'')+'лимит '+fmt(acc.limit,false,acc.currency)+'</div>':'<div class="fs12 muted">'+esc(ownerLabel(acc))+'</div>')+
+      '</div>';}).join("")||'<div class="fs13 muted" style="padding:6px 0">Активных счетов пока нет.</div>')+
+    '</div></div>'+ 
+  '<div class="stats" style="margin-bottom:16px">'+
+    statCard("Реальный доход "+periodText,fmt(realIncomePeriod(period),true),"личный доход + чистый вывод","i-in",I.in,'data-act="open-tx-filter" data-filter="in"')+
+    statCard("Расходы "+periodText,fmt(a.expense),"только личные траты","i-out",I.out,'data-act="open-tx-filter" data-filter="out"')+
+    statCard("Мне должны",fmt(owedToMe()),S.debts.filter(d=>d.dir==="in"&&debtRemaining(d)>0).length+" активных долга","i-asset",I.debt,'data-act="nav" data-v="debts"')+
+    statCard("Я должен",fmt(iOwe()),S.debts.filter(d=>d.dir==="out"&&debtRemaining(d)>0).length+" обязательства","i-liab",I.wallet,'data-act="nav" data-v="debts"')+
+  '</div>'+ 
+  '<div class="grid" style="grid-template-columns:1.6fr 1fr;gap:16px">'+
+    '<div class="card"><div class="card-h"><h3>Динамика за 6 месяцев</h3><div class="fs12 muted">чистый личный поток по месяцам</div></div><div class="card-b">'+chart+'</div></div>'+ 
+    '<div class="card"><div class="card-h"><h3>Ближайшие возвраты</h3><button class="btn ghost sm" data-act="nav" data-v="debts">Все →</button></div><div class="card-b" style="padding-top:6px">'+upHtml+'</div></div>'+ 
+  '</div>'+ 
+  '<div class="grid" style="grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">'+
+    '<div class="card"><div class="card-h"><h3>Прогресс по целям</h3><button class="btn ghost sm" data-act="nav" data-v="goals">Все →</button></div><div class="card-b">'+goalsHtml+'</div></div>'+ 
+    forecastMini()+
+  '</div>';
+}
+
+function forecastMini(){
+  const pb=personalBalance();
+  const avg=avgMonthlyNet();
+  const in3=pb+avg*3;
+  return '<div class="card"><div class="card-h"><h3>Прогноз баланса</h3><button class="btn ghost sm" data-act="nav" data-v="forecast">Детали →</button></div><div class="card-b">'+
+    '<div class="kpi-line"><span class="muted">Сейчас на руках</span><b>'+fmt(pb)+'</b></div>'+
+    '<div class="kpi-line"><span class="muted">Средний поток / мес</span><b class="'+(avg>=0?'pos':'neg')+'">'+fmt(avg,true)+'</b></div>'+
+    '<div class="kpi-line"><span class="muted">Через 3 месяца (оценка)</span><b class="'+(in3>=pb?'pos':'neg')+'">'+fmt(in3)+'</b></div>'+
+    '<div class="fs12 muted" style="margin-top:8px">Оценка по среднему за последние месяцы. Чем регулярнее записи — тем точнее прогноз.</div>'+
+  '</div></div>';
+}
+
+/* =========================================================
+   ВИД: СЧЕТА
+   ========================================================= */
+function viewAccounts(){
+  const ordered=[...(S.accounts||[])].sort((a,b)=>Number(!!a.archived)-Number(!!b.archived)||String(ownerLabel(a)).localeCompare(String(ownerLabel(b))));
+  const cards=ordered.map(a=>{
+    const bal=accountBalance(a.id), used=accUsedCredit(a.id), avail=accAvailable(a.id);
+    const history=hasAccountTx(a.id), isCredit=(a.limit||0)>0;
+    const pctUsed=isCredit?Math.min(100,Math.round(used/a.limit*100)):0;
+    const e=isBusinessAccount(a)?entityById(a.legalEntityId):null;
+    const points=(a.businessIds||[]).map(bizById).filter(Boolean);
+    const archiveAction=a.system?'':(a.archived
+      ?'<button class="btn sm" data-act="restore-acc" data-id="'+a.id+'">Вернуть из архива</button>'
+      :(history?'<button class="btn sm ghost" data-act="archive-acc" data-id="'+a.id+'">В архив</button>':'<button class="btn sm ghost danger" data-act="del-acc" data-id="'+a.id+'">'+svg(I.trash)+'Удалить</button>'));
+    return '<div class="card pad clickable" data-act="open-account-tx" data-id="'+a.id+'" style="'+(a.archived?'opacity:.72;':'')+'">'+
+      '<div style="display:flex;align-items:center;gap:11px;margin-bottom:10px">'+
+        '<div class="avatar" style="background:var(--surface-3);font-size:17px">'+a.emoji+'</div>'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:600;font-family:var(--disp)">'+esc(a.name)+(a.archived?' <span class="chip c-adjustment">архив</span>':'')+'</div>'+
+        '<div class="fs12 muted">'+esc(ownerLabel(a))+' · '+esc(a.bankName||accKindLabel(a.kind))+' · '+a.currency+'</div></div>'+
+      '</div>'+
+      '<div class="mono" style="font-weight:700;font-size:24px;color:'+(bal<0?'var(--liab)':(isBusinessAccount(a)?'var(--biz)':'var(--personal)'))+'">'+fmt(bal,false,a.currency)+'</div>'+
+      (points.length?'<div class="fs12 muted" style="margin-top:7px">Точки: '+points.map(b=>esc(b.name)).join(' · ')+'</div>':'')+
+      (isCredit?'<div style="margin-top:11px"><div class="prog"><span style="width:'+pctUsed+'%;background:var(--liab)"></span></div><div class="fs12 muted" style="display:flex;justify-content:space-between;margin-top:6px"><span>Долг: '+fmt(used,false,a.currency)+'</span><span>Доступно: '+fmt(avail,false,a.currency)+'</span></div></div>':'')+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="edit-acc" data-id="'+a.id+'">'+svg(I.edit)+'Изменить</button>'+(!a.archived&&!isCashPoolAccount(a)?'<button class="btn sm" data-act="adjust-acc" data-id="'+a.id+'">Сверить баланс</button>':'')+archiveAction+'</div>'+
+    '</div>';
+  }).join('');
+  const activeCount=activeAccounts().length, archivedCount=(S.accounts||[]).length-activeCount;
+  return head("Счета","Банковские счета ИП/ООО и общая касса студий учитываются отдельно. Общий счёт ООО и общая касса не задваиваются по точкам.")+
+    '<div class="card pad" style="margin-bottom:16px"><div class="two" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">'+
+      '<div><div class="eyebrow">Личные деньги</div><div class="mono" style="font-size:26px;font-weight:700;color:var(--personal)">'+fmt(personalBalance())+'</div><div class="fs12 muted">только личные счета</div></div>'+
+      '<div><div class="eyebrow">Безнал бизнеса</div><div class="mono" style="font-size:26px;font-weight:700;color:var(--biz)">'+fmt(businessBankBalance())+'</div><div class="fs12 muted">счета ИП и ООО</div></div>'+
+      '<div><div class="eyebrow">Наличные студий</div><div class="mono" style="font-size:26px;font-weight:700;color:var(--goal)">'+fmt(businessCashBalance())+'</div><div class="fs12 muted">общая касса трёх студий</div></div>'+
+      '<div><div class="eyebrow">Всего денег</div><div class="mono" style="font-size:26px;font-weight:700">'+fmt(personalBalance()+bizTotalBalance())+'</div><div class="fs12 muted">личные + бизнес</div></div>'+
+    '</div></div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="eyebrow">СЧЕТА · '+activeCount+(archivedCount?' · В АРХИВЕ '+archivedCount:'')+'</div><button class="btn sm" data-act="add-acc">'+svg(I.add)+'Добавить счёт</button></div>'+
+    ((S.accounts||[]).length?'<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(285px,1fr))">'+cards+'</div>':'<div class="empty">'+svg(I.card)+'<b>Счетов пока нет</b></div>');
+}
+
+/* =========================================================
+   ВИД: ВНЕСТИ ОПЕРАЦИЮ
+   ========================================================= */
+const TYPES=[
+  {id:"in",group:"personal",t:"Доход",d:"Личные деньги пришли",bar:"var(--personal)"},
+  {id:"out",group:"personal",t:"Расход",d:"Личная трата",bar:"var(--liab)"},
+  {id:"transfer",group:"transfer",t:"Перевод между счетами",d:"Внутри одного владельца",bar:"var(--asset)"},
+  {id:"entity_transfer",group:"transfer",t:"Между ИП и ООО",d:"Займ, взнос или иное перемещение",bar:"var(--goal)"},
+  {id:"cash_transfer",group:"transfer",t:"Инкассация",d:"Наличные студии ↔ её банковский счёт",bar:"var(--asset)"},
+  {id:"biz_income",group:"business",t:"Доход бизнеса",d:"Выручка на счёт бизнеса",bar:"var(--personal)"},
+  {id:"biz_expense",group:"business",t:"Расход бизнеса",d:"Оплата со счёта бизнеса",bar:"var(--liab)"},
+  {id:"draw",group:"business",t:"Вывод из бизнеса",d:"Взял из студии/аппарата себе",bar:"var(--biz)"},
+  {id:"contribution",group:"business",t:"Взнос в бизнес",d:"Перевёл с личного счёта",bar:"#8792A2"},
+  {id:"personal_biz_expense",group:"business",t:"Личная оплата за бизнес",d:"Оплатил личной картой за одну или несколько точек",bar:"var(--goal)"},
+];
+const TYPE_GROUPS=[
+  {id:"personal",label:"Личное"},
+  {id:"transfer",label:"Переводы"},
+  {id:"business",label:"Бизнес"},
+];
+function compactType(id){return TYPES.find(t=>t.id===id)||TYPES[0];}
+function compactTypeLabel(type){return type==='biz_income'?'Выручка':compactType(type).t;}
+function compactTone(type){
+  if(type==='in')return 'in';if(type==='out'||type==='biz_expense')return 'out';if(type==='biz_income'||type==='draw')return 'biz';
+  if(type==='transfer'||type==='cash_transfer')return 'asset';if(type==='entity_transfer'||type==='personal_biz_expense')return 'goal';return 'more';
+}
+function compactQuickTypeHtml(type){
+  return [['in','Доход'],['out','Расход'],['biz_income','Выручка']].map(([id,label])=>'<button type="button" class="t-'+id+(type===id?' on':'')+'" data-act="pick-type" data-t="'+id+'">'+label+'</button>').join('')+
+    '<button type="button" class="t-more '+(!['in','out','biz_income'].includes(type)?'on':'')+'" data-act="open-add-types">Ещё</button>';
+}
+function compactMoreTypesHtml(){
+  const groups=[['Переводы',['transfer','entity_transfer','cash_transfer']],['Бизнес',['draw','contribution','biz_expense','personal_biz_expense']]];
+  return '<div class="compact-add-more">'+groups.map(([label,ids])=>'<div class="grp-lbl">'+label+'</div>'+ids.map(id=>{const t=compactType(id);return '<button type="button" class="opt" data-act="pick-type" data-t="'+id+'"><span class="bar" style="background:'+t.bar+'"></span><div><div class="tt">'+esc(t.t)+'</div><div class="td">'+esc(t.d)+'</div></div></button>';}).join('')).join('')+'</div>';
+}
+function compactNumpadHtml(){return ['1','2','3','4','5','6','7','8','9','.','0','back'].map(k=>'<button type="button" class="compact-key" data-act="amount-key" data-k="'+k+'">'+(k==='back'?'⌫':k)+'</button>').join('');}
+function compactPresetColor(type){return compactType(type).bar||'var(--muted)';}
+function compactPresetHtml(){
+  const allowed=new Set(['in','out','biz_income','biz_expense','draw','contribution']);
+  const rows=(S.presets||[]).filter(p=>allowed.has(p.type)).map(p=>'<button type="button" class="compact-preset" data-act="use-preset" data-id="'+p.id+'"><span class="d" style="background:'+compactPresetColor(p.type)+'"></span>'+esc(p.label)+(p.amount!=null?' · '+esc(p.amount):'')+'</button>').join('');
+  return rows+'<button type="button" class="compact-preset add" data-act="save-current-preset" title="Сохранить текущую форму как пресет" aria-label="Сохранить текущую форму как пресет">＋</button>';
+}
+function compactAmountCode(){
+  const type=mval('f-type');let a=null;
+  if(['transfer','entity_transfer','cash_transfer'].includes(type))a=accById(mval('f-from-acc'));
+  else if(['biz_income','biz_expense'].includes(type))a=accById(mval('f-biz-acc'));
+  else a=accById(mval('f-acc'));
+  return a?.currency||baseCode();
+}
+function compactBalanceContext(){
+  const type=mval('f-type');let account=null;
+  if(['transfer','entity_transfer','cash_transfer'].includes(type))account=accById(mval('f-from-acc'));
+  else if(['biz_income','biz_expense'].includes(type))account=accById(mval('f-biz-acc'));
+  else if(['in','out','draw','contribution','personal_biz_expense'].includes(type))account=accById(mval('f-acc'));
+  return account?{account,balance:accountBalance(account.id)}:{account:null,balance:0};
+}
+function compactAmountParts(){
+  const raw=(mval('f-amount')||'0').replace(',','.');const n=Number(raw)||0;
+  const pieces=raw.split('.'),whole=(pieces[0]||'0').replace(/^0+(?=\d)/,'')||'0';
+  const grouped=whole.replace(/\B(?=(\d{3})+(?!\d))/g,'\u2009')+(pieces.length>1?','+pieces[1]:'');
+  return {raw,n,grouped};
+}
+function compactPreviewHtml(type,n,code){
+  const money=fmt(n,false,code),complex=['transfer','entity_transfer','cash_transfer','personal_biz_expense'].includes(type);
+  if(complex)return n>0?'Детали перемещения и распределения — ниже':compactType(type).d;
+  let a=null,dir=0;
+  if(type==='in'){a=accById(mval('f-acc'));dir=1;}else if(type==='out'){a=accById(mval('f-acc'));dir=-1;}
+  else if(type==='draw'){a=accById(mval('f-acc'));dir=1;}else if(type==='contribution'){a=accById(mval('f-acc'));dir=-1;}
+  else if(type==='biz_income'){a=accById(mval('f-biz-acc'));dir=1;}else if(type==='biz_expense'){a=accById(mval('f-biz-acc'));dir=-1;}
+  if(!n)return compactType(type).d;
+  if(!a)return 'Выберите счёт в деталях ниже';
+  return '<b>'+esc(a.name)+'</b> <b class="chg '+(dir>0?'pos':'')+'">'+(dir>0?'+':'−')+money+'</b>';
+}
+function updateCompactAddChrome(updateBalance=true){
+  const amountEl=document.getElementById('f-amount'),display=document.getElementById('compact-amount');if(!amountEl||!display)return;
+  const type=mval('f-type')||'in',t=compactType(type),tone=compactTone(type),{n,grouped}=compactAmountParts(),code=compactAmountCode();
+  S.meta=S.meta||{};S.meta.addType=type;
+  const seg=document.getElementById('compact-type-seg');if(seg)seg.innerHTML=compactQuickTypeHtml(type);
+  const badge=document.getElementById('compact-badge');if(badge){badge.className='compact-badge t-'+tone;badge.innerHTML='<span class="dt"></span><span>'+esc(compactTypeLabel(type))+'</span>';}
+  let sign='';if(n>0){if(['in','biz_income','draw'].includes(type))sign='<span class="sgn">+</span>';else if(['out','biz_expense','contribution','personal_biz_expense'].includes(type))sign='<span class="sgn">−</span>';}
+  display.className='compact-amount '+(n===0?'zero':'t-'+tone);display.innerHTML=sign+grouped+'<span class="cur">'+esc(sym(code)||code)+'</span>';
+  const preview=document.getElementById('compact-preview');if(preview)preview.innerHTML=compactPreviewHtml(type,n,code);
+  const save=document.getElementById('compact-save');if(save){save.disabled=n<=0;save.className='compact-save '+(n>0?'ready t-'+tone:'');save.textContent=n>0?'Сохранить · '+compactTypeLabel(type):'Сохранить операцию';}
+  if(updateBalance){const ctx=compactBalanceContext(),lbl=document.getElementById('compact-bal-label'),val=document.getElementById('compact-bal-value');if(lbl)lbl.textContent=ctx.account?ctx.account.name+' · остаток':'Счёт не выбран';if(val)val.textContent=ctx.account?fmt(ctx.balance,false,ctx.account.currency):'—';}
+}
+function compactPressAmount(key){
+  const input=document.getElementById('f-amount');if(!input)return;haptic(6);let v=(input.value||'0').replace(',','.');
+  if(key==='back'){v=v.length>1?v.slice(0,-1):'0';if(!v||v==='-')v='0';}
+  else if(key==='.'){if(!v.includes('.'))v=(v==='0'?'0.':v+'.');}
+  else if(/^\d$/.test(key)){if(v.includes('.')&&v.split('.')[1].length>=2)return;v=v==='0'?key:v+key;if(v.replace('.','').length>12)return;}
+  input.value=v;input.dispatchEvent(new Event('input',{bubbles:true}));updateCompactAddChrome();
+}
+function pulseCompactAmount(){const el=document.getElementById('compact-amount');if(!el)return;el.classList.add('pulse');setTimeout(()=>el.classList.remove('pulse'),130);}
+function animateCompactBalance(from,to,account){
+  const el=document.getElementById('compact-bal-value');if(!el||!account)return;const reduce=window.matchMedia?.('(prefers-reduced-motion:reduce)').matches;
+  if(reduce){el.textContent=fmt(to,false,account.currency);return;}const dur=420,t0=performance.now();
+  (function step(now){const p=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-p,3);el.textContent=fmt(from+(to-from)*e,false,account.currency);if(p<1)requestAnimationFrame(step);})(t0);
+}
+function viewAdd(){
+  const savedType=S.meta?.addType||S.meta?.addDraft?.type||'in',initialType=TYPES.some(t=>t.id===savedType)?savedType:'in';
+  setTimeout(()=>{if(S?.ui?.view==='add'&&document.getElementById('f-type'))refreshAddForm();},0);
+  return '<div class="compact-add-shell"><div class="card compact-add">'+
+    '<input type="hidden" id="f-type" value="'+initialType+'">'+
+    '<div class="compact-seg" id="compact-type-seg">'+compactQuickTypeHtml(initialType)+'</div>'+
+    '<div class="compact-amt-block"><span class="compact-badge t-'+compactTone(initialType)+'" id="compact-badge"><span class="dt"></span><span>'+esc(compactTypeLabel(initialType))+'</span></span>'+
+      '<label class="compact-sr" id="f-amount-lbl" for="f-amount">Сумма ('+C()+')</label><input class="compact-amount-input mono" id="f-amount" type="text" inputmode="decimal" value="0" autocomplete="off">'+
+      '<div class="compact-amount zero" id="compact-amount">0<span class="cur">'+esc(C())+'</span></div><div class="compact-preview" id="compact-preview">'+esc(compactType(initialType).d)+'</div></div>'+
+    '<div class="compact-details">'+
+      '<div id="f-biz-wrap" class="field hidden"><label>Точка бизнеса</label><select class="inp" id="f-biz">'+activeBusinesses().map(b=>'<option value="'+b.id+'">'+b.emoji+' '+esc(b.name)+' · '+esc(entityById(b.legalEntityId)?.name||'без юрлица')+'</option>').join('')+'</select></div>'+ 
+      '<div id="f-payment-wrap" class="field hidden"><label>Способ оплаты</label><select class="inp" id="f-payment"><option value="bank">Безналичные</option><option value="cash">Наличные</option></select><div class="hint" id="f-payment-hint"></div></div>'+ 
+      '<div id="f-acc-wrap" class="field"><label id="f-acc-lbl">Личный счёт</label><select class="inp" id="f-acc">'+selectOptions(personalAccounts(),'Нет активных личных счетов')+'</select></div>'+ 
+      '<div id="f-biz-acc-wrap" class="field hidden"><label id="f-biz-acc-lbl">Счёт бизнеса</label><select class="inp" id="f-biz-acc"></select><div class="hint" id="f-biz-acc-hint"></div></div>'+ 
+      '<div id="f-pbe-wrap" class="hidden">'+
+        '<div class="field"><label>Распределить расход между точками</label><div id="f-pbe-list" style="border:1px solid var(--line);border-radius:10px;padding:7px 12px"></div><div style="display:flex;align-items:center;gap:9px;margin-top:9px;flex-wrap:wrap"><button type="button" class="btn sm" data-act="split-pbe">Распределить поровну</button><span class="fs12 muted" id="f-pbe-summary"></span></div></div>'+ 
+        '<div class="row2"><div class="field"><label>Как учитывать оплату</label><select class="inp" id="f-pbe-settlement"><option value="reimburse">Бизнес должен вернуть мне</option><option value="contribution">Считать взносом собственника</option></select><div class="hint">При возмещении долг создаётся отдельно для каждого юрлица.</div></div><div class="field" id="f-pbe-due-wrap"><label>Срок возмещения</label><input class="inp" id="f-pbe-due" type="date" value="'+daysAhead(30)+'"></div></div>'+ 
+      '</div>'+ 
+      '<div id="f-transfer-wrap" class="row2 hidden"><div class="field"><label>Со счёта</label><select class="inp" id="f-from-acc">'+selectOptions(activeAccounts(),'Нет активных счетов')+'</select></div><div class="field"><label>На счёт</label><select class="inp" id="f-to-acc">'+selectOptions(activeAccounts(),'Нет активных счетов')+'</select></div></div>'+ 
+      '<div id="f-transfer-result" class="field hidden" style="background:var(--asset-bg);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--ink-2)"></div>'+ 
+      '<div class="row2"><div class="field" id="f-cat-wrap"><label>Категория</label><select class="inp" id="f-cat"></select></div><div class="field"><label>Дата</label><input class="inp" id="f-date" type="date" value="'+TODAY()+'"></div></div>'+ 
+      '<div class="field"><label>Комментарий <span class="muted">(необязательно)</span></label><input class="inp" id="f-note" placeholder="Например: выручка за смену"></div>'+ 
+      '<div id="f-explain" class="field" style="background:var(--surface-2);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--ink-2)"></div>'+ 
+    '</div>'+ 
+    '<div class="compact-pre-lbl">Частые операции — один тап</div><div class="compact-presets" id="compact-presets">'+compactPresetHtml()+'</div>'+ 
+    '<div class="compact-pad" id="compact-pad">'+compactNumpadHtml()+'</div>'+ 
+    '<button type="button" class="compact-save" id="compact-save" data-act="save-tx" disabled>Сохранить операцию</button>'+ 
+    '<div class="compact-bal"><div><div class="l" id="compact-bal-label">Счёт не выбран</div><div class="sync">✓ синхронизировано</div></div><div class="v mono" id="compact-bal-value">—</div></div>'+ 
+  '</div></div>';
+}
+function selectedPaymentMethod(){
+  const b=bizById(mval('f-biz'));
+  return b?.acceptsCash?(mval('f-payment')||'bank'):'bank';
+}
+function updatePaymentMethodOptions(){
+  const wrap=document.getElementById('f-payment-wrap'),sel=document.getElementById('f-payment'),hint=document.getElementById('f-payment-hint');
+  if(!wrap||!sel)return;
+  const type=document.getElementById('f-type')?.value,b=bizById(mval('f-biz'));
+  const show=!!b?.acceptsCash&&['draw','contribution','biz_income','biz_expense'].includes(type);
+  wrap.classList.toggle('hidden',!show);
+  if(!show)sel.value='bank';
+  if(hint)hint.textContent=show?'Безналичные попадут на счёт юрлица, наличные — в общую кассу трёх студий.':'Для этой точки используется только безналичный расчёт.';
+}
+function updateBusinessAccountOptions(){
+  const sel=document.getElementById('f-biz-acc');if(!sel)return;
+  const bizId=mval('f-biz'),method=selectedPaymentMethod(),list=businessAccountsForBiz(bizId,method),prev=sel.value;
+  sel.innerHTML=selectOptions(list,method==='cash'?'Общая касса не настроена':'Нет связанного банковского счёта');
+  if(list.some(a=>a.id===prev))sel.value=prev;
+  const b=bizById(bizId),hint=document.getElementById('f-biz-acc-hint');
+  if(hint)hint.textContent=list.length?(method==='cash'?'Наличные будут учтены в общей кассе и одновременно останутся видны у выбранной студии.':'Безналичные пойдут на счёт '+(entityById(b?.legalEntityId)?.name||'выбранного юрлица')+', связанный с этой точкой.'):(method==='cash'?'Для студии не настроена общая касса.':'Привяжите банковский счёт к точке в разделе «Счета».');
+}
+function updateCashTransferAccounts(){
+  const from=document.getElementById('f-from-acc'),to=document.getElementById('f-to-acc');if(!from||!to)return;
+  const list=businessAccountsForBiz(mval('f-biz'));
+  const prevFrom=from.value,prevTo=to.value;
+  from.innerHTML=selectOptions(list,'Нет счетов для инкассации');to.innerHTML=selectOptions(list,'Нет счетов для инкассации');
+  if(list.some(a=>a.id===prevFrom))from.value=prevFrom;
+  if(list.some(a=>a.id===prevTo))to.value=prevTo;
+  const cash=list.find(isCashPoolAccount),bank=list.find(isBankBusinessAccount);
+  if(cash&&bank&&from.value===to.value){from.value=cash.id;to.value=bank.id;}
+  ensureTransferAccounts();updateTransferPreview();
+}
+function pbeBusinesses(){return activeBusinesses().filter(b=>!b.technical);}
+function renderPbeAllocations(){
+  const box=document.getElementById('f-pbe-list');if(!box||box.children.length)return;
+  const list=pbeBusinesses(),studios=list.filter(b=>/студ/i.test(b.name));
+  box.innerHTML=list.map(b=>{
+    const checked=studios.length?studios.some(x=>x.id===b.id):true,e=entityById(b.legalEntityId);
+    return '<div style="display:grid;grid-template-columns:minmax(0,1fr) 145px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)"><label class="fs13" style="display:flex;align-items:center;gap:8px;min-width:0"><input type="checkbox" class="pbe-check" data-biz="'+b.id+'" '+(checked?'checked':'')+'> <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+b.emoji+' '+esc(b.name)+'</span> <span class="muted">· '+esc(e?.name||'')+'</span></label><input class="inp mono pbe-amount" data-biz="'+b.id+'" type="number" min="0" step="0.01" value="0.00" '+(checked?'':'disabled')+'></div>';
+  }).join('')||'<span class="muted fs13">Нет активных точек бизнеса</span>';
+  distributePbe();
+}
+function pbeRows(){return [...document.querySelectorAll('.pbe-check')].map(c=>({check:c,input:document.querySelector('.pbe-amount[data-biz="'+c.dataset.biz+'"]'),biz:c.dataset.biz}));}
+function distributePbe(){
+  const rows=pbeRows().filter(r=>r.check.checked),totalC=Math.round((Number(mval('f-amount'))||0)*100);if(!rows.length){updatePbeSummary();return;}
+  const each=Math.floor(totalC/rows.length);let used=0;
+  rows.forEach((r,i)=>{const cents=i===rows.length-1?totalC-used:each;used+=cents;r.input.value=(cents/100).toFixed(2);delete r.input.dataset.manual;});
+  pbeRows().filter(r=>!r.check.checked).forEach(r=>{r.input.value='0.00';delete r.input.dataset.manual;});updatePbeSummary();
+}
+function updatePbeSummary(){
+  const rows=pbeRows(),selected=rows.filter(r=>r.check.checked),allocated=selected.reduce((s,r)=>s+(Number(r.input.value)||0),0),total=Number(mval('f-amount'))||0,box=document.getElementById('f-pbe-summary'),acc=accById(mval('f-acc')),code=acc?.currency||baseCode();
+  rows.forEach(r=>r.input.disabled=!r.check.checked);
+  if(box)box.innerHTML='Распределено <b class="mono '+(Math.abs(allocated-total)<=0.01?'pos':'neg')+'">'+fmt(allocated,false,code)+'</b> из '+fmt(total,false,code);
+}
+function updatePbeSettlement(){const wrap=document.getElementById('f-pbe-due-wrap');if(wrap)wrap.classList.toggle('hidden',mval('f-pbe-settlement')!=='reimburse');}
+function selectedPbeAllocations(){return pbeRows().filter(r=>r.check.checked).map(r=>({biz:r.biz,amount:Number(r.input.value)||0})).filter(a=>a.amount>0);}
+const ADD_FORM_FIELDS=['f-acc','f-biz-acc','f-biz','f-cat','f-payment','f-from-acc','f-to-acc'];
+function addFormSnapshot(){const out={};for(const id of ADD_FORM_FIELDS)out[id]=mval(id);return out;}
+function selectHasValue(id,value){const el=document.getElementById(id);return !!el&&!!value&&[...el.options].some(o=>o.value===value);}
+function setSelectValue(id,value){if(selectHasValue(id,value))document.getElementById(id).value=value;}
+function rememberLastUsed(type){
+  S.meta=S.meta||{};S.meta.lastUsed=S.meta.lastUsed||{};
+  const item={cat:mval('f-cat'),biz:mval('f-biz'),paymentMethod:mval('f-payment')};
+  if(['transfer','entity_transfer','cash_transfer'].includes(type)){item.account=mval('f-from-acc');item.businessAccount=mval('f-to-acc');}
+  else{item.account=mval('f-acc');item.businessAccount=mval('f-biz-acc');}
+  S.meta.lastUsed[type]=item;
+}
+function presetAccountId(type){return ['in','out'].includes(type)?mval('f-acc'):mval('f-biz-acc');}
+function currentPresetDraft(){
+  const type=mval('f-type'),allowed=['in','out','biz_income','biz_expense','draw','contribution'];if(!allowed.includes(type))return null;
+  const amount=Number(mval('f-amount'))||0,d={type,cat:mval('f-cat'),biz:mval('f-biz'),account:presetAccountId(type),paymentMethod:mval('f-payment')};
+  if(amount>0)d.amount=amount;if(!d.cat)delete d.cat;if(!d.biz)delete d.biz;if(!d.account)delete d.account;if(!d.paymentMethod)delete d.paymentMethod;return d;
+}
+function captureAddDraft(){const d=currentPresetDraft();if(!d)return null;S.meta=S.meta||{};S.meta.addDraft=d;persist();return d;}
+function applyPreset(id){
+  const p=(S.presets||[]).find(x=>x.id===id);if(!p)return;
+  haptic(8);resetAddFormSession();
+  document.getElementById('f-type').value=p.type;
+  document.querySelectorAll('#type-picker .type-btn').forEach(b=>b.classList.toggle('on',b.dataset.t===p.type));
+  refreshAddForm();
+  if(p.amount!=null)document.getElementById('f-amount').value=p.amount;
+  if(p.biz){setSelectValue('f-biz',p.biz);updatePaymentMethodOptions();}
+  if(p.paymentMethod)setSelectValue('f-payment',p.paymentMethod);
+  if(['draw','contribution','biz_income','biz_expense'].includes(p.type)){updatePaymentMethodOptions();updateBusinessAccountOptions();if(p.account)setSelectValue('f-biz-acc',p.account);}
+  else if(['in','out'].includes(p.type)&&p.account)setSelectValue('f-acc',p.account);
+  if(p.cat)setSelectValue('f-cat',p.cat);
+  updateAmountCurrencyLabel();if(p.type==='personal_biz_expense')updatePbeSummary();captureAddDraft();
+}
+function refreshAddForm(skipLastUsed=false){
+  const prior=addFormSnapshot();
+  const type=document.getElementById('f-type').value;S.meta=S.meta||{};S.meta.addType=type;
+  const last=skipLastUsed?{}:(S.meta?.lastUsed?.[type]||{});
+  const desired=(id,key)=>addFormTouched.has(id)?prior[id]:(last[key]||'');
+  const isTransfer=type==='transfer',isEntityTransfer=type==='entity_transfer',isCashTransfer=type==='cash_transfer',isPbe=type==='personal_biz_expense';
+  const isAccountMove=isTransfer||isEntityTransfer||isCashTransfer;
+  const isBiz=['draw','contribution','biz_income','biz_expense','cash_transfer'].includes(type);
+  const usesPersonal=['in','out','draw','contribution','personal_biz_expense'].includes(type);
+  const usesBizAccount=['draw','contribution','biz_income','biz_expense'].includes(type);
+  document.getElementById('f-biz-wrap').classList.toggle('hidden',!isBiz);
+  document.getElementById('f-acc-wrap').classList.toggle('hidden',!usesPersonal);
+  document.getElementById('f-biz-acc-wrap').classList.toggle('hidden',!usesBizAccount);
+  document.getElementById('f-pbe-wrap').classList.toggle('hidden',!isPbe);
+  document.getElementById('f-transfer-wrap').classList.toggle('hidden',!isAccountMove);
+  document.getElementById('f-transfer-result').classList.toggle('hidden',!isAccountMove);
+  document.getElementById('f-cat-wrap').classList.toggle('hidden',isTransfer||isCashTransfer);
+  if(isBiz)setSelectValue('f-biz',desired('f-biz','biz'));
+  if(usesPersonal)setSelectValue('f-acc',desired('f-acc','account'));
+  if(isAccountMove)setSelectValue('f-from-acc',desired('f-from-acc','account'));
+  setSelectValue('f-payment',desired('f-payment','paymentMethod'));
+  const accLbl={in:'Куда пришло (личный счёт)',out:'С какого личного счёта',draw:'На какой личный счёт вывели',contribution:'С какого личного счёта внесли',personal_biz_expense:'С какой личной карты / счёта оплачено'};
+  if(usesPersonal)document.getElementById('f-acc-lbl').textContent=accLbl[type]||'Личный счёт';
+  updatePaymentMethodOptions();
+  const method=selectedPaymentMethod();
+  const baccLbl={draw:method==='cash'?'Из какой кассы':'С какого счёта бизнеса',contribution:method==='cash'?'В какую кассу':'На какой счёт бизнеса',biz_income:method==='cash'?'В какую кассу поступила выручка':'На какой счёт поступила выручка',biz_expense:method==='cash'?'Из какой кассы оплачено':'С какого счёта оплачено'};
+  if(usesBizAccount)document.getElementById('f-biz-acc-lbl').textContent=baccLbl[type]||'Счёт бизнеса';
+  if(usesBizAccount){updateBusinessAccountOptions();setSelectValue('f-biz-acc',desired('f-biz-acc','businessAccount'));}
+  if(isCashTransfer){updateCashTransferAccounts();setSelectValue('f-from-acc',desired('f-from-acc','account'));setSelectValue('f-to-acc',desired('f-to-acc','businessAccount'));ensureTransferAccounts();updateTransferPreview();}
+  else if(isAccountMove){setSelectValue('f-to-acc',desired('f-to-acc','businessAccount'));ensureTransferAccounts();}
+  if(isPbe){renderPbeAllocations();updatePbeSettlement();updatePbeSummary();}
+  const catSel=document.getElementById('f-cat');let cats=[];
+  if(type==='in')cats=S.categories.in;else if(type==='out')cats=S.categories.out;else if(type==='draw')cats=['Вывод собственнику','Возмещение личных расходов'];else if(type==='contribution')cats=['Взнос собственника'];else if(type==='biz_income')cats=S.categories.bizIn;else if(type==='entity_transfer')cats=['Взнос собственника','Выдача займа','Возврат займа','Оплата по договору','Другое перемещение'];else if(type==='cash_transfer')cats=['Инкассация'];else if(type==='personal_biz_expense')cats=S.categories.bizOut;else if(type!=='transfer')cats=S.categories.bizOut;
+  catSel.innerHTML=cats.map(c=>'<option>'+esc(c)+'</option>').join('');setSelectValue('f-cat',desired('f-cat','cat'));
+  const ex={
+    in:'Личный счёт увеличится. Это личный доход.',out:'Личный счёт уменьшится. Это личный расход.',
+    transfer:'Разрешены переводы между личными счетами или между банковскими счетами одного юрлица.',
+    entity_transfer:'Деньги переместятся между банковскими счетами разных юрлиц. Операция не попадёт в прибыль; назначение сохранится отдельно.',
+    cash_transfer:'Перемещение между наличными выбранной студии и её банковским счётом. Прибыль не изменится.',
+    draw:'Деньги спишутся из выбранного канала бизнеса и поступят на личный счёт. Это не расход бизнеса и не личный доход в обычной аналитике.',
+    contribution:'Деньги спишутся с личного счёта и поступят в выбранный канал бизнеса. Это не личный расход и не выручка бизнеса.',
+    biz_income:method==='cash'?'Выручка увеличит наличные выбранной студии и общую кассу.':'Выручка увеличит банковский счёт соответствующего юрлица и безналичный остаток точки.',
+    biz_expense:method==='cash'?'Расход уменьшит наличные выбранной студии и общую кассу.':'Расход уменьшит банковский счёт соответствующего юрлица и безналичный остаток точки.',
+    personal_biz_expense:'Личная карта уменьшится на общую сумму. Расход попадёт в прибыль выбранных точек, но их банковские счета и касса не изменятся. При выборе возмещения приложение создаст долги ИП и ООО перед вами.'};
+  document.getElementById('f-explain').textContent=ex[type]||'';
+  updateAmountCurrencyLabel();if(isAccountMove)updateTransferPreview();updateCompactAddChrome();
+}
+function ensureTransferAccounts(){const from=document.getElementById('f-from-acc'),to=document.getElementById('f-to-acc');if(!from||!to)return;if(from.value===to.value&&to.options.length>1)to.selectedIndex=from.selectedIndex===0?1:0;}
+function sameAccountOwner(a,b){if(!a||!b||isCashPoolAccount(a)||isCashPoolAccount(b))return false;if(isPersonalAccount(a)&&isPersonalAccount(b))return true;return isBankBusinessAccount(a)&&isBankBusinessAccount(b)&&a.legalEntityId&&a.legalEntityId===b.legalEntityId;}
+function transferAmounts(){const from=accById(mval('f-from-acc')),to=accById(mval('f-to-acc')),amount=Number(mval('f-amount'))||0;if(!from||!to||from.id===to.id||amount<=0)return {from,to,amount,toAmount:0};const toAmount=from.currency===to.currency?amount:toBase(amount,from.currency)/rate(to.currency);return {from,to,amount,toAmount};}
+function updateTransferPreview(){
+  const box=document.getElementById('f-transfer-result');if(!box)return;const {from,to,amount,toAmount}=transferAmounts();
+  if(activeAccounts().length<2){box.textContent='Для перемещения нужны минимум два активных счёта.';return;}
+  if(!from||!to){box.textContent='Выберите счёт списания и счёт зачисления.';return;}
+  if(from.id===to.id){box.textContent='Счета должны отличаться.';return;}
+  const type=document.getElementById('f-type')?.value||'transfer';
+  if(type==='transfer'&&!sameAccountOwner(from,to)){box.textContent='Обычный перевод возможен только между личными счетами или банковскими счетами одного юрлица.';return;}
+  if(type==='entity_transfer'&&(!isBankBusinessAccount(from)||!isBankBusinessAccount(to)||from.legalEntityId===to.legalEntityId)){box.textContent='Для этой операции выберите банковские счета двух разных юридических лиц.';return;}
+  if(type==='cash_transfer'){
+    const b=bizById(mval('f-biz')),valid=b&&accountAvailableForBiz(from,b,isCashPoolAccount(from)?'cash':'bank')&&accountAvailableForBiz(to,b,isCashPoolAccount(to)?'cash':'bank');
+    if(!valid||isCashPoolAccount(from)===isCashPoolAccount(to)){box.textContent='Выберите общую кассу и банковский счёт выбранной студии.';return;}
+  }
+  if(amount<=0){box.textContent='Введите сумму перемещения.';return;}
+  box.innerHTML='Со счёта <b>'+esc(from.name)+'</b> спишется <span class="mono">'+fmt(amount,false,from.currency)+'</span>; на <b>'+esc(to.name)+'</b> зачислится <span class="mono">'+fmt(toAmount,false,to.currency)+'</span>.';
+}
+function updateAmountCurrencyLabel(){
+  const type=document.getElementById('f-type').value;let code=baseCode();
+  if(type==='transfer'||type==='entity_transfer'||type==='cash_transfer'){const a=accById(mval('f-from-acc'));if(a)code=a.currency;}
+  else if(['biz_income','biz_expense'].includes(type)){const a=accById(mval('f-biz-acc'));if(a)code=a.currency;}
+  else if(['in','out','draw','contribution','personal_biz_expense'].includes(type)){const a=accById(mval('f-acc'));if(a)code=a.currency;}
+  document.getElementById('f-amount-lbl').textContent='Сумма ('+sym(code)+')';
+}
+
+/* =========================================================
+   ВИД: ОПЕРАЦИИ
+   ========================================================= */
+const TYPE_META={
+  in:{n:"Доход",c:"c-in"}, out:{n:"Расход",c:"c-out"}, draw:{n:"Вывод",c:"c-draw"},
+  contribution:{n:"Возврат в бизнес",c:"c-contribution"}, biz_income:{n:"Доход бизнеса",c:"c-biz_income"}, biz_expense:{n:"Расход бизнеса",c:"c-biz_expense"}, personal_biz_expense:{n:"Оплачено лично",c:"c-biz_expense"},
+  transfer:{n:"Перевод",c:"c-transfer"}, entity_transfer:{n:"Между юрлицами",c:"c-transfer"}, cash_transfer:{n:"Инкассация",c:"c-transfer"},
+  debt_issue:{n:"Выдано в долг",c:"c-out"}, debt_borrow:{n:"Получен займ",c:"c-in"}, debt_repayment_in:{n:"Возврат долга",c:"c-in"}, debt_repayment_out:{n:"Погашение долга",c:"c-out"},
+  account_adjustment:{n:"Корректировка счёта",c:"c-adjustment"}, biz_adjustment:{n:"Корректировка наличных",c:"c-adjustment"}
+};
+function monthLabel(key){if(!key)return "";const d=new Date(key+"-01T12:00:00");return d.toLocaleDateString("ru-RU",{month:"long",year:"numeric"});}
+function txUsesAccount(t,id){return t.account===id||t.businessAccount===id||t.fromAccount===id||t.toAccount===id;}
+function viewTx(){
+  const f=S.ui.txFilter,p=S.ui.txPeriod,accountId=S.ui.txAccount||null,exactMonth=S.ui.txMonth||null;
+  let list=[...(S.tx||[])].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  if(f==="adjustments")list=list.filter(t=>t.type==="account_adjustment"||t.type==="biz_adjustment");else if(f==="debt_moves")list=list.filter(t=>String(t.type).startsWith("debt_"));else if(f!=="all")list=list.filter(t=>t.type===f);
+  if(accountId)list=list.filter(t=>txUsesAccount(t,accountId));
+  if(exactMonth)list=list.filter(t=>monthKey(t.date)===exactMonth);else if(p==="month")list=list.filter(t=>inThisMonth(t.date));
+  const filterBtn=(id,lbl)=>'<button class="btn sm '+(f===id?'primary':'')+'" data-act="tx-filter" data-f="'+id+'">'+lbl+'</button>';
+  const rows=list.map(t=>{
+    const m=t.type==="draw"&&t.cat==="Возмещение личных расходов"?{n:"Возмещение",c:"c-transfer"}:(TYPE_META[t.type]||{n:t.type,c:"c-adjustment"}), b=t.biz?bizById(t.biz):null;
+    const acc=t.account?accById(t.account):null, bacc=t.businessAccount?accById(t.businessAccount):null;
+    const fromAcc=t.fromAccount?accById(t.fromAccount):null,toAcc=t.toAccount?accById(t.toAccount):null;
+    const isTransfer=t.type==="transfer"||t.type==="entity_transfer"||t.type==="cash_transfer",isAdj=t.type==="account_adjustment"||t.type==="biz_adjustment";
+    const code=isTransfer?(fromAcc?.currency||baseCode()):(acc?.currency||bacc?.currency||baseCode());
+    const delta=isAdj?(Number(t.delta)||0):0,shownAmount=isAdj?Math.abs(delta):t.amount;
+    const sign=isAdj?(delta>0?"+":delta<0?"−":""):(t.type==="out"||t.type==="contribution"||t.type==="biz_expense"||t.type==="personal_biz_expense"||t.type==="debt_issue"||t.type==="debt_repayment_out"?"−":(t.type==="draw"?"":"+"));
+    const amtCls=isTransfer?"blue":(isAdj?(delta>=0?"pos":"neg"):(t.type==="draw"?"amber":((["in","biz_income","debt_borrow","debt_repayment_in"].includes(t.type))?"pos":"neg")));
+    const pay=t.biz&&['biz_income','biz_expense','draw','contribution'].includes(t.type)?(txPaymentMethod(t)==='cash'?' · наличные':' · безналичные'):'';
+    const allocText=t.type==='personal_biz_expense'?(t.allocations||[]).map(x=>{const pb=bizById(x.biz);return pb?pb.emoji+' '+esc(pb.name)+' '+fmt(x.amount,false,acc?.currency||baseCode()):'';}).filter(Boolean).join(' · '):'';
+    const settlementText=t.type==='personal_biz_expense'?(t.settlement==='reimburse'?' · к возмещению':' · взнос собственника'):'';
+    const debt=t.debtId?(S.debts||[]).find(d=>d.id===t.debtId):null,debtText=debt?'<div class="fs12 muted" style="margin-top:3px">'+esc(debt.who)+' · '+fmt(t.debtAmount||0,false,debtCurrency(debt))+'</div>':'';
+    const details='<span class="tag-cat">'+esc(t.cat||"—")+'</span>'+(b?' <span class="fs12 muted">'+b.emoji+' '+esc(b.name)+' · '+esc(entityById(b.legalEntityId)?.name||'')+pay+'</span>':'')+(allocText?'<div class="fs12 muted" style="margin-top:3px">'+allocText+settlementText+'</div>':'')+debtText+(t.note?'<div class="fs12 muted" style="margin-top:2px">'+esc(t.note)+'</div>':'');
+    let accountHtml='—';
+    if(isTransfer)accountHtml=fromAcc&&toAcc?fromAcc.emoji+' '+esc(fromAcc.name)+' → '+toAcc.emoji+' '+esc(toAcc.name):'счёт удалён';
+    else if(t.type==='draw'||t.type==='contribution')accountHtml=(bacc?bacc.emoji+' '+esc(bacc.name):'счёт бизнеса')+(t.type==='draw'?' → ':' ← ')+(acc?acc.emoji+' '+esc(acc.name):'личный счёт');
+    else if(acc)accountHtml=acc.emoji+' '+esc(acc.name);
+    const amountHtml=isTransfer?'−'+fmt(t.amount,false,fromAcc?.currency||baseCode()).replace('−','')+'<div class="fs12 pos">+'+fmt(t.toAmount,false,toAcc?.currency||baseCode()).replace('−','')+'</div>':sign+fmt(shownAmount,false,code).replace('−','');
+    return '<tr><td class="mono fs12 muted" data-label="Дата">'+fmtDate(t.date)+'</td><td data-label="Тип"><span class="chip '+m.c+'"><span class="d" style="background:currentColor"></span>'+m.n+'</span></td><td data-label="Детали">'+details+'</td><td class="fs12 muted" data-label="Счёт">'+accountHtml+'</td><td class="num '+amtCls+'" data-label="Сумма" style="font-weight:600">'+amountHtml+'</td><td class="num no-label"><button class="x-btn" data-act="del-tx" data-id="'+t.id+'" title="Удалить">'+svg(I.trash,'')+'</button></td></tr>';
+  }).join('');
+  const body=list.length?'<table><thead><tr><th>Дата</th><th>Тип</th><th>Категория / точка</th><th>Счёт</th><th class="num">Сумма</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="empty">'+svg(I.tx)+'<b>Операций пока нет</b><span class="fs13">Добавьте первую запись.</span></div>';
+  const activeFilters=(accountId?'<button class="btn sm tx-active-filter" data-act="clear-tx-account">Счёт: '+esc(accById(accountId)?.name||'удалён')+' ✕</button>':'')+(exactMonth?'<button class="btn sm tx-active-filter" data-act="clear-tx-month">Месяц: '+esc(monthLabel(exactMonth))+' ✕</button>':'');
+  return head("Операции",list.length+" записей")+(activeFilters?'<div class="filters">'+activeFilters+'</div>':'')+'<div class="filters">'+filterBtn("all","Все")+filterBtn("in","Доходы")+filterBtn("out","Расходы")+filterBtn("transfer","Переводы")+filterBtn("entity_transfer","Между юрлицами")+filterBtn("cash_transfer","Инкассация")+filterBtn("draw","Выводы")+filterBtn("contribution","Взносы")+filterBtn("biz_income","Доход бизнеса")+filterBtn("biz_expense","Расход бизнеса")+filterBtn("personal_biz_expense","Оплачено лично")+filterBtn("debt_moves","Долги")+filterBtn("adjustments","Корректировки")+'<span class="spacer"></span><div class="seg"><button class="'+(p==="all"&&!exactMonth?"on":"")+'" data-act="tx-period" data-p="all">За всё время</button><button class="'+(p==="month"&&!exactMonth?"on":"")+'" data-act="tx-period" data-p="month">Этот месяц</button></div><button class="btn primary sm" data-act="nav" data-v="add">'+svg(I.add)+'Добавить</button></div><div class="card">'+body+'</div>';
+}
+
+/* =========================================================
+   ВИД: ДОЛГИ
+   ========================================================= */
+function dueLabel(due){
+  if(!due)return {txt:"без срока",cls:""};
+  const diff=Math.round((new Date(due)-new Date(TODAY()))/86400000);
+  if(diff<0)return {txt:"просрочено на "+Math.abs(diff)+" дн.",cls:"due-over"};
+  if(diff===0)return {txt:"сегодня",cls:"due-soon"};
+  if(diff<=7)return {txt:"через "+diff+" дн.",cls:"due-soon"};
+  return {txt:"до "+fmtDate(due),cls:""};
+}
+function debtCard(d){
+  const rem=debtRemaining(d); const paid=(Number(d.amount)||0)-rem,code=debtCurrency(d);
+  const p=Math.min(100,Math.round(paid/(Number(d.amount)||1)*100));
+  const dd=dueLabel(d.due);
+  const color=d.dir==="in"?"var(--asset)":"var(--liab)";
+  const bg=d.dir==="in"?"var(--asset-bg)":"var(--liab-bg)";
+  return '<div class="card pad" style="margin-bottom:12px">'+
+    '<div style="display:flex;align-items:flex-start;gap:12px">'+
+      '<div class="avatar" style="background:'+bg+';color:'+color+'">'+(d.who[0]||"?").toUpperCase()+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-weight:600;font-family:var(--disp)">'+esc(d.who)+'</div>'+
+        '<div class="fs12 muted">'+(d.note?esc(d.note)+" · ":"")+(d.kind==="owner_reimbursement"?"оплачено ":(d.dir==="in"?"выдано ":"получено "))+fmtDate(d.date)+' · <span class="'+dd.cls+'">'+dd.txt+'</span></div>'+
+      '</div>'+
+      '<div style="text-align:right"><div class="num" style="font-weight:700;font-size:16px;color:'+color+'">'+fmt(rem,false,code)+'</div>'+
+      (paid>0?'<div class="fs12 muted num">из '+fmt(d.amount,false,code)+'</div>':'')+'</div>'+
+    '</div>'+
+    (paid>0?'<div class="prog" style="margin-top:10px"><span style="width:'+p+'%;background:'+color+'"></span></div>':'')+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:11px">'+
+      (rem>0?'<button class="btn sm" data-act="repay" data-id="'+d.id+'">'+(d.dir==="in"?"Отметить возврат":"Отметить платёж")+'</button><button class="btn sm ghost" data-act="repay" data-id="'+d.id+'" data-frac="0.25">25%</button><button class="btn sm ghost" data-act="repay" data-id="'+d.id+'" data-frac="0.5">50%</button><button class="btn sm ghost" data-act="repay" data-id="'+d.id+'" data-frac="1">Остаток</button>':'<span class="chip c-in">✓ Закрыт</span>')+
+      '<button class="btn sm ghost" data-act="edit-debt" data-id="'+d.id+'">'+svg(I.edit)+'</button>'+
+      '<button class="btn sm ghost danger" data-act="del-debt" data-id="'+d.id+'">'+svg(I.trash)+'</button>'+
+    '</div>'+
+  '</div>';
+}
+function viewDebts(){
+  const inD=S.debts.filter(d=>d.dir==="in");
+  const outD=S.debts.filter(d=>d.dir==="out");
+  const colIn=inD.length?inD.map(debtCard).join(""):'<div class="empty" style="padding:26px"><b>Вам никто не должен</b></div>';
+  const colOut=outD.length?outD.map(debtCard).join(""):'<div class="empty" style="padding:26px"><b>У вас нет долгов</b></div>';
+  return head("Долги и кредиты","Каждый долг хранится в своей валюте. Общие итоги пересчитываются в "+baseCode()+" по текущим курсам.")+
+  '<div style="display:flex;gap:10px;margin-bottom:16px"><button class="btn primary" data-act="add-debt" data-dir="in">'+svg(I.add)+'Мне должны</button><button class="btn" data-act="add-debt" data-dir="out">'+svg(I.add)+'Я должен</button></div>'+
+  '<div class="two">'+
+    '<div><div class="eyebrow" style="margin-bottom:10px;color:var(--asset)">← МНЕ ДОЛЖНЫ · '+fmt(owedToMe())+'</div>'+colIn+'</div>'+
+    '<div><div class="eyebrow" style="margin-bottom:10px;color:var(--liab)">→ Я ДОЛЖЕН · '+fmt(iOwe())+'</div>'+colOut+'</div>'+
+  '</div>';
+}
+
+/* =========================================================
+   ВИД: БИЗНЕС
+   ========================================================= */
+function viewBusiness(){
+  const entityCards=(S.legalEntities||[]).map(e=>{
+    const isCash=e.type==='cash';
+    const accounts=(S.accounts||[]).filter(a=>a.scope==='business'&&a.legalEntityId===e.id&&!a.archived);
+    const points=isCash?[...new Set(accounts.flatMap(a=>a.businessIds||[]))].map(bizById).filter(Boolean):(S.businesses||[]).filter(b=>b.legalEntityId===e.id&&!b.archived);
+    const bal=accounts.reduce((sum,a)=>sum+toBase(accountBalance(a.id),a.currency),0);
+    const icon=isCash?'💵':e.type==='ooo'?'🏢':'👤';
+    const controls=e.system?'':('<div style="display:flex;gap:8px;margin-top:11px"><button class="btn sm" data-act="edit-entity" data-id="'+e.id+'">'+svg(I.edit)+'Изменить</button>'+(!hasEntityLinks(e.id)?'<button class="btn sm ghost danger" data-act="del-entity" data-id="'+e.id+'">Удалить</button>':'')+'</div>');
+    const breakdown=isCash?'<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:7px">'+points.map(b=>'<div class="kpi-line"><span class="muted">'+b.emoji+' '+esc(b.name)+'</span><b class="mono">'+fmt(bizCashBalance(b.id))+'</b></div>').join('')+'</div>':'';
+    return '<div class="card pad"><div style="display:flex;align-items:center;gap:10px"><div class="avatar" style="background:'+(isCash?'var(--goal-bg)':'var(--surface-3)')+'">'+icon+'</div><div style="flex:1"><div style="font-weight:700">'+esc(e.name)+(isCash?' <span class="chip c-adjustment">общая касса</span>':'')+'</div><div class="fs12 muted">'+entityTypeLabel(e.type)+' · '+points.length+' точек · '+accounts.length+' счетов</div></div><div class="mono" style="font-weight:700;color:'+(isCash?'var(--goal)':'var(--biz)')+'">'+fmt(bal)+'</div></div>'+breakdown+controls+'</div>';
+  }).join('');
+  const cards=activeBusinesses().map(b=>{
+    const st=bizStats(b.id),history=hasBizTx(b.id),e=entityById(b.legalEntityId),bankAccounts=businessAccountsForBiz(b.id,'bank');
+    const channelRows='<div class="kpi-line"><span class="muted">Безналичные</span><b class="mono '+(st.cashless>=0?'pos':'neg')+'">'+fmt(st.cashless)+'</b></div>'+(b.acceptsCash?'<div class="kpi-line"><span class="muted">Наличные</span><b class="mono '+(st.cash>=0?'pos':'neg')+'">'+fmt(st.cash)+'</b></div>':'');
+    return '<div class="card pad"><div style="display:flex;align-items:center;gap:11px;margin-bottom:12px"><div class="avatar" style="background:var(--biz-bg);font-size:18px">'+b.emoji+'</div><div style="flex:1"><div style="font-weight:600;font-family:var(--disp)">'+esc(b.name)+(b.technical?' <span class="chip c-adjustment">служебная</span>':'')+'</div><div class="fs12 muted">'+esc(e?.name||'Без юрлица')+' · '+(bankAccounts.length?bankAccounts.map(a=>esc(a.bankName||a.name)).join(' · '):'банковский счёт не привязан')+(b.acceptsCash?' · общая касса':'')+'</div></div></div>'+channelRows+
+      '<div class="kpi-line"><span class="muted">Выручка</span><b class="pos">'+fmt(st.income,true)+'</b></div><div class="kpi-line"><span class="muted">Расходы</span><b class="neg">'+fmt(st.expense)+'</b></div><div class="kpi-line"><span class="muted">Выведено / внесено</span><b class="amber">'+fmt(st.draw)+' / '+fmt(st.contribution)+'</b></div><div class="kpi-line" style="border-top:1px solid var(--line);margin-top:4px;padding-top:9px"><span style="font-weight:600">Прибыль до выводов</span><b class="'+(st.income-st.expense>=0?'pos':'neg')+'">'+fmt(st.income-st.expense,true)+'</b></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="edit-biz" data-id="'+b.id+'">'+svg(I.edit)+'Изменить</button>'+(b.acceptsCash?'<button class="btn sm" data-act="adjust-biz" data-id="'+b.id+'">Сверить наличные</button>':'')+(!history?'<button class="btn sm ghost danger" data-act="del-biz" data-id="'+b.id+'">'+svg(I.trash)+'Удалить</button>':'')+'</div></div>';
+  }).join('');
+  const legalCount=(S.legalEntities||[]).filter(e=>e.type!=='cash').length;
+  return head("Бизнес","У студий безналичные операции идут на счёт соответствующего юрлица, а наличные всех трёх студий собираются в общей кассе.")+
+    '<div class="card pad" style="margin-bottom:16px;background:linear-gradient(180deg,var(--biz-bg),var(--surface))"><div class="two" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"><div><div class="eyebrow">Безнал бизнеса</div><div class="mono" style="font-size:24px;font-weight:700;color:var(--biz)">'+fmt(businessBankBalance())+'</div><div class="fs12 muted">реальные банковские остатки</div></div><div><div class="eyebrow">Наличные студий</div><div class="mono" style="font-size:24px;font-weight:700;color:var(--goal)">'+fmt(businessCashBalance())+'</div><div class="fs12 muted">общая касса трёх студий</div></div><div><div class="eyebrow">Юридических лиц</div><div class="mono" style="font-size:24px;font-weight:700">'+legalCount+'</div><div class="fs12 muted">ИП и ООО + отдельная касса</div></div><div><div class="eyebrow">Активных точек</div><div class="mono" style="font-size:24px;font-weight:700">'+activeBusinesses().length+'</div><div class="fs12 muted">включая служебные направления</div></div></div></div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="eyebrow">ЮРИДИЧЕСКИЕ ЛИЦА И КАССА</div><button class="btn sm" data-act="add-entity">'+svg(I.add)+'Добавить юрлицо</button></div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(285px,1fr));margin-bottom:20px">'+entityCards+'</div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="eyebrow">ТОЧКИ · '+activeBusinesses().length+'</div><button class="btn sm" data-act="add-biz">'+svg(I.add)+'Добавить точку</button></div>'+(activeBusinesses().length?'<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">'+cards+'</div>':'<div class="empty">'+svg(I.biz)+'<b>Точек пока нет</b></div>');
+}
+
+/* =========================================================
+   ВИД: ПРОГНОЗ
+   ========================================================= */
+function viewForecast(){
+  const pb=personalBalance();
+  const avg=avgMonthlyNet();
+  // прогноз баланса на 6 месяцев с учётом плановых возвратов долгов
+  const pts=[{label:"сейчас",val:pb}];
+  let run=pb; const now=new Date();
+  const months=[];
+  for(let i=1;i<=6;i++){
+    const md=new Date(now.getFullYear(),now.getMonth()+i,1);
+    const key=md.toISOString().slice(0,7);
+    // плановые движения долгов в этом месяце
+    let debtFlow=0;
+    for(const d of S.debts){ const rem=debtRemaining(d); if(rem<=0||!d.due)continue;
+      if(monthKey(d.due)===key){ const baseRem=toBase(rem,debtCurrency(d));debtFlow+= d.dir==="in"?baseRem:-baseRem; }
+    }
+    run=run+avg+debtFlow;
+    pts.push({label:md.toLocaleDateString("ru-RU",{month:"short"}),val:run});
+    months.push({key,label:md.toLocaleDateString("ru-RU",{month:"long"}),avg,debtFlow});
+  }
+  const line=lineChart(pts);
+  // таблица предстоящих движений по долгам
+  const debtRows=S.debts.map(d=>({d,rem:debtRemaining(d)})).filter(x=>x.rem>0&&x.d.due)
+    .sort((a,b)=>a.d.due.localeCompare(b.d.due))
+    .map(({d,rem})=>{const dd=dueLabel(d.due);return '<tr><td data-label="Контрагент">'+esc(d.who)+'</td><td data-label="Тип"><span class="chip '+(d.dir==="in"?"c-biz_income":"c-out")+'">'+(d.dir==="in"?"поступление":"платёж")+'</span></td><td class="fs13 '+dd.cls+'" data-label="Срок">'+fmtDate(d.due)+' · '+dd.txt+'</td><td class="num '+(d.dir==="in"?"blue":"neg")+'" data-label="Сумма" style="font-weight:600">'+(d.dir==="in"?"+":"−")+fmt(rem,false,debtCurrency(d)).replace("−","")+'</td></tr>';}).join("");
+
+  const in1=pb+avg, in3=pb+avg*3, in6=run;
+  return head("Прогноз","Оценка будущего баланса по вашим средним показателям и запланированным возвратам долгов.")+
+  '<div class="stats" style="margin-bottom:16px">'+
+    statCard("Через 1 месяц",fmt(pb+avg),"оценка",in1>=pb?"i-in":"i-liab",I.forecast)+
+    statCard("Через 3 месяца",fmt(in3),"оценка",in3>=pb?"i-in":"i-liab",I.forecast)+
+    statCard("Через 6 месяцев",fmt(in6),"с учётом долгов",in6>=pb?"i-in":"i-liab",I.forecast)+
+    statCard("Средний поток / мес",fmt(avg,true),"доходы − расходы",avg>=0?"i-in":"i-liab",I.in)+
+  '</div>'+
+  '<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Прогноз личного баланса</h3><div class="fs12 muted">6 месяцев вперёд</div></div><div class="card-b">'+line+
+    '<div class="fs12 muted" style="margin-top:10px">Линия учитывает средний ежемесячный поток ('+fmt(avg,true)+') и разовые возвраты долгов по срокам. Это оценка, а не гарантия — ведите записи регулярно для точности.</div>'+
+  '</div></div>'+
+  '<div class="card"><div class="card-h"><h3>Плановые движения по долгам</h3></div>'+
+    (debtRows?'<table><thead><tr><th>Контрагент</th><th>Тип</th><th>Срок</th><th class="num">Сумма</th></tr></thead><tbody>'+debtRows+'</tbody></table>':'<div class="empty" style="padding:24px"><span class="fs13">Нет долгов со сроком возврата.</span></div>')+
+  '</div>';
+}
+
+/* =========================================================
+   ВИД: ЦЕЛИ
+   ========================================================= */
+function viewGoals(){
+  const avg=avgMonthlyNet();
+  const cards=S.goals.map(g=>{
+    const p=Math.min(100,Math.round(g.saved/g.target*100));
+    const left=Math.max(0,g.target-g.saved);
+    // прогноз даты достижения по среднему потоку
+    let eta="—";
+    if(left<=0)eta="цель достигнута 🎉";
+    else if(avg>0){const mo=Math.ceil(left/avg);const d=new Date();d.setMonth(d.getMonth()+mo);eta="≈ "+d.toLocaleDateString("ru-RU",{month:"long",year:"numeric"})+" ("+mo+" мес.)";}
+    else eta="нужен положительный поток";
+    return '<div class="card pad" style="margin-bottom:14px">'+
+      '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">'+
+        '<div class="avatar" style="background:var(--goal-bg);color:var(--goal)">'+svg(I.goal)+'</div>'+
+        '<div style="flex:1"><div style="font-weight:600;font-family:var(--disp);font-size:15px">'+esc(g.name)+'</div>'+
+        (g.note?'<div class="fs12 muted">'+esc(g.note)+'</div>':'')+
+        (g.due?'<div class="fs12 muted">срок: '+fmtDate(g.due)+'</div>':'')+'</div>'+
+        '<div style="text-align:right"><div class="mono" style="font-weight:700;font-size:15px;color:var(--goal)">'+p+'%</div></div>'+
+      '</div>'+
+      '<div class="prog"><span style="width:'+p+'%;background:var(--goal)"></span></div>'+
+      '<div style="display:flex;justify-content:space-between;margin-top:8px" class="fs13"><span class="mono">'+fmt(g.saved)+' / '+fmt(g.target)+'</span><span class="muted mono">осталось '+fmt(left)+'</span></div>'+
+      '<div class="fs12 muted" style="margin-top:6px;padding-top:8px;border-top:1px dashed var(--surface-3)">Прогноз достижения: <b class="purple">'+eta+'</b></div>'+
+      '<div style="display:flex;gap:8px;margin-top:11px">'+
+        '<button class="btn sm" data-act="add-to-goal" data-id="'+g.id+'">Отложить в цель</button>'+
+        '<button class="btn sm ghost" data-act="edit-goal" data-id="'+g.id+'">'+svg(I.edit)+'</button>'+
+        '<button class="btn sm ghost danger" data-act="del-goal" data-id="'+g.id+'">'+svg(I.trash)+'</button>'+
+      '</div></div>';
+  }).join("");
+  return head("Цели и планирование","Задавайте цели — прогноз покажет, когда вы их достигнете при текущем темпе накоплений.")+
+  '<div style="margin-bottom:14px"><button class="btn primary" data-act="add-goal">'+svg(I.add)+'Новая цель</button></div>'+
+  (S.goals.length?cards:'<div class="empty">'+svg(I.goal)+'<b>Целей пока нет</b><span class="fs13">Добавьте первую — например, «подушка безопасности» или «новая студия».</span></div>');
+}
+
+/* =========================================================
+   ВИД: НАСТРОЙКИ
+   ========================================================= */
+function viewSettings(){
+  const catList=(arr,kind)=>arr.map((c,i)=>'<span class="chip" style="background:var(--surface-3);color:var(--ink-2)">'+esc(c)+' <button class="x-btn" style="padding:0 2px;font-size:14px" data-act="del-cat" data-kind="'+kind+'" data-i="'+i+'">✕</button></span>').join(" ");
+  const ratesDate=S.meta&&S.meta.ratesUpdated?new Date(S.meta.ratesUpdated):null;
+  const hasRatesDate=ratesDate&&!Number.isNaN(ratesDate.getTime());
+  const ratesStale=!hasRatesDate||Date.now()-ratesDate.getTime()>2*24*60*60*1000;
+  const ratesStatus=hasRatesDate?'Курсы НБ РБ на '+ratesDate.toLocaleString("ru-RU",{dateStyle:"medium",timeStyle:"short"}):'Курсы НБ РБ: курсы не обновлялись';
+  const reconciliation=reconcile();
+  const presetRows=(S.presets||[]).map(p=>{const type=TYPES.find(t=>t.id===p.type);return '<div class="list-row"><div style="flex:1"><b class="fs13">'+esc(p.label)+'</b><div class="fs12 muted">'+esc(type?.t||p.type)+(p.cat?' · '+esc(p.cat):'')+'</div></div><button class="x-btn" data-act="del-preset" data-id="'+p.id+'">✕</button></div>';}).join('')||'<div class="fs13 muted">Пресетов пока нет.</div>';
+  const diagnosticHtml=reconciliation.length?reconciliation.map(x=>'<div class="fs12" style="color:var(--liab);margin-top:6px"><b>'+esc(x.name)+'</b>: '+fmt(x.a)+' / '+fmt(x.b)+' · разница '+fmt(x.diff,true)+'</div>').join(''):'<div class="fs13" style="color:var(--personal);font-weight:600">Сверка сходится ✓</div>';
+  const curRows=S.currencies.map((c,i)=>
+    '<div class="list-row" style="padding:9px 0">'+
+      '<div class="avatar" style="background:var(--surface-3);font-size:15px">'+esc(c.symbol)+'</div>'+
+      '<div style="flex:1"><b class="fs13">'+esc(c.code)+'</b> <span class="fs12 muted">'+(c.code===baseCode()?"базовая валюта":"1 "+c.code+" = "+fmt(c.rate)+"")+'</span></div>'+
+      (c.code===baseCode()?'<span class="chip c-in">базовая</span>':
+        '<input class="inp mono" style="width:110px;padding:6px 9px" type="number" step="0.01" value="'+c.rate+'" data-act="rate-input" data-code="'+c.code+'" title="курс к базовой">'+
+        ' <button class="x-btn" data-act="del-cur" data-i="'+i+'">✕</button>')+
+    '</div>'
+  ).join("");
+  return head("Настройки","Валюты, категории и резервная копия. Юрлица и точки настраиваются в разделе «Бизнес», счета — в разделе «Счета».")+
+  '<div class="two">'+
+    '<div>'+
+      '<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Оформление</h3></div><div class="card-b"><div class="field"><label>Тема</label><div class="seg"><button class="'+(themeMode()==='auto'?'on':'')+'" data-act="set-theme" data-theme="auto">Авто</button><button class="'+(themeMode()==='light'?'on':'')+'" data-act="set-theme" data-theme="light">Светлая</button><button class="'+(themeMode()==='dark'?'on':'')+'" data-act="set-theme" data-theme="dark">Тёмная</button></div><div class="hint">В режиме «Авто» приложение следует системной теме устройства.</div></div></div></div>'+
+      '<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Валюты и курсы</h3></div><div class="card-b">'+
+        '<div class="field"><label>Базовая валюта (в ней сводится общий итог)</label><select class="inp" id="s-base">'+
+          S.currencies.map(c=>'<option value="'+c.code+'" '+(c.code===baseCode()?"selected":"")+'>'+c.code+' '+esc(c.symbol)+'</option>').join("")+
+        '</select></div>'+
+        '<div class="divider"></div>'+
+        curRows+
+        '<div class="fs12 muted" style="margin:8px 0 6px">Курс — сколько единиц базовой валюты стоит 1 единица валюты. При запуске курсы автоматически обновляются по официальным данным Национального банка Республики Беларусь; ручное значение остаётся резервным на случай отсутствия связи.</div>'+
+        '<div class="fs12" style="margin:0 0 10px;color:'+(ratesStale?'var(--biz)':'var(--muted)')+'">'+ratesStatus+'</div>'+
+        '<button class="btn sm" style="margin-bottom:12px" data-act="refresh-rates">Обновить курсы сейчас</button>'+
+        '<div class="row3" style="grid-template-columns:1fr 1fr 1.4fr"><input class="inp" id="cur-code" placeholder="Код (GBP)" maxlength="4"><input class="inp" id="cur-sym" placeholder="Символ (£)" maxlength="3"><input class="inp mono" id="cur-rate" type="number" step="0.01" placeholder="Курс к базовой"></div>'+
+        '<button class="btn sm" style="margin-top:10px" data-act="add-cur">Добавить валюту</button> '+
+        '<button class="btn primary sm" style="margin-top:10px" data-act="save-base">Сохранить базовую валюту</button>'+
+      '</div></div>'+
+      '<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>'+svg(I.bell)+' Напоминания</h3></div><div class="card-b">'+
+        '<div class="field"><label>Время ежедневного напоминания</label><input class="inp" id="s-remind" type="time" value="'+esc(S.settings.reminderTime)+'"></div>'+
+        '<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;cursor:pointer"><input type="checkbox" id="s-notify" '+(S.settings.notify?"checked":"")+'> Показывать всплывающее напоминание в браузере</label>'+
+        '<div class="fs12 muted" style="margin-top:8px">Напоминание сработает, пока приложение открыто в браузере. Плюс на «Обзоре» всегда виден баннер, если за сегодня нет записей.</div>'+
+        '<button class="btn primary sm" style="margin-top:10px" data-act="save-reminder">Сохранить и включить</button>'+
+      '</div></div>'+
+    '</div>'+
+    '<div>'+
+      '<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Категории доходов</h3></div><div class="card-b">'+
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+catList(S.categories.in,"in")+'</div>'+
+        '<div style="display:flex;gap:8px"><input class="inp" id="cat-in" placeholder="Новая категория дохода"><button class="btn sm" data-act="add-cat" data-kind="in">Добавить</button></div>'+
+      '</div></div>'+
+      '<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Категории расходов</h3></div><div class="card-b">'+
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+catList(S.categories.out,"out")+'</div>'+
+        '<div style="display:flex;gap:8px"><input class="inp" id="cat-out" placeholder="Новая категория расхода"><button class="btn sm" data-act="add-cat" data-kind="out">Добавить</button></div>'+
+      '</div></div>'+
+      '<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Статьи дохода бизнеса</h3></div><div class="card-b">'+
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+catList(S.categories.bizIn,"bizIn")+'</div>'+
+        '<div style="display:flex;gap:8px"><input class="inp" id="cat-bizIn" placeholder="Например: Выручка"><button class="btn sm" data-act="add-cat" data-kind="bizIn">Добавить</button></div>'+
+        '<div class="fs12 muted" style="margin-top:8px">Подставляются к операции «Доход бизнеса».</div>'+
+      '</div></div>'+
+      '<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Статьи расхода бизнеса</h3></div><div class="card-b">'+
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+catList(S.categories.bizOut,"bizOut")+'</div>'+
+        '<div style="display:flex;gap:8px"><input class="inp" id="cat-bizOut" placeholder="Например: ЗП тренерам"><button class="btn sm" data-act="add-cat" data-kind="bizOut">Добавить</button></div>'+
+        '<div class="fs12 muted" style="margin-top:8px">Подставляются к «Расходу бизнеса» и «Возврату в бизнес».</div>'+
+      '</div></div>'+
+    '</div>'+
+  '</div>'+
+  '<div class="card" style="margin-top:0;margin-bottom:16px"><div class="card-h"><h3>Частые операции</h3></div><div class="card-b">'+presetRows+'<button class="btn sm" style="margin-top:12px" data-act="save-form-preset">Сохранить текущую форму как пресет</button><div class="fs12 muted" style="margin-top:8px">Используется последняя настроенная форма в разделе «Внести операцию».</div></div></div>'+
+  '<div class="card" style="margin-top:0;margin-bottom:16px"><div class="card-h"><h3>Диагностика</h3></div><div class="card-b">'+diagnosticHtml+'</div></div>'+
+  '<div class="card" style="margin-top:0"><div class="card-h"><h3>Данные</h3></div><div class="card-b">'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+      '<button class="btn" data-act="export">Скачать резервную копию (.json)</button>'+
+      '<button class="btn" data-act="import">Загрузить из копии</button>'+
+      '<button class="btn danger" data-act="reset">Начать с чистого листа</button>'+
+      '<button class="btn" data-act="logout">Выйти</button>'+
+    '</div>'+
+    '<div class="fs12 muted" style="margin-top:10px">База подготовлена для реального учёта без демо-операций. Резервную копию можно скачать или восстановить из JSON.</div>'+
+  '</div></div>';
+}
+
+/* =========================================================
+   ГРАФИКИ (SVG вручную)
+   ========================================================= */
+function barChart(series){
+  const W=560,H=180,pad=28,bw=Math.min(46,(W-pad*2)/series.length-14);
+  const max=Math.max(1,...series.map(s=>Math.max(Math.abs(s.income),Math.abs(s.expense))));
+  const zeroY=H-pad-30;
+  const scale=(zeroY-14)/max;
+  let bars="";
+  series.forEach((s,i)=>{
+    const x=pad+i*((W-pad*2)/series.length)+((W-pad*2)/series.length-bw*2-6)/2;
+    const ih=s.income*scale, eh=s.expense*scale;
+    let content='<title>'+esc(monthLabel(s.key))+'</title>';
+    content+='<rect x="'+x+'" y="'+(zeroY-ih)+'" width="'+bw+'" height="'+Math.max(1,ih)+'" rx="3" fill="var(--personal)" opacity="0.85"/>';
+    content+='<rect x="'+(x+bw+6)+'" y="'+(zeroY-eh)+'" width="'+bw+'" height="'+Math.max(1,eh)+'" rx="3" fill="var(--liab)" opacity="0.75"/>';
+    content+='<text x="'+(x+bw+3)+'" y="'+(H-16)+'" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="var(--mono)">'+s.label+'</text>';
+    if(s.net!==0)content+='<text x="'+(x+bw+3)+'" y="'+(zeroY-Math.max(ih,eh)-6)+'" text-anchor="middle" font-size="9.5" fill="'+(s.net>=0?'var(--personal)':'var(--liab)')+'" font-family="var(--mono)" font-weight="600">'+(s.net>=0?'+':'−')+kfmt(Math.abs(s.net))+'</text>';
+    bars+='<g class="chart-drill" data-act="drill-month" data-month="'+s.key+'">'+content+'</g>';
+  });
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block">'+
+    '<line x1="'+pad+'" y1="'+zeroY+'" x2="'+(W-pad)+'" y2="'+zeroY+'" stroke="var(--line)"/>'+bars+
+    '</svg>'+ 
+    '<div style="display:flex;gap:16px;margin-top:6px;font-size:12px" class="muted"><span><span style="display:inline-block;width:9px;height:9px;background:var(--personal);border-radius:2px;margin-right:5px"></span>Доходы</span><span><span style="display:inline-block;width:9px;height:9px;background:var(--liab);border-radius:2px;margin-right:5px"></span>Расходы</span></div>';
+}
+function lineChart(pts){
+  const W=620,H=200,pad=40;
+  const vals=pts.map(p=>p.val);
+  const min=Math.min(...vals,0),max=Math.max(...vals,1);
+  const rng=(max-min)||1;
+  const X=i=>pad+i*((W-pad*2)/(pts.length-1));
+  const Y=v=>pad/2+ (H-pad-pad/2)*(1-(v-min)/rng);
+  let path="",area="",dots="",labels="";
+  pts.forEach((p,i)=>{
+    const x=X(i),y=Y(p.val);
+    path+=(i?"L":"M")+x+" "+y+" ";
+    dots+='<circle cx="'+x+'" cy="'+y+'" r="3.5" fill="var(--personal)"/>';
+    labels+='<text x="'+x+'" y="'+(H-8)+'" text-anchor="middle" font-size="10.5" fill="var(--muted)" font-family="var(--mono)">'+p.label+'</text>';
+    labels+='<text x="'+x+'" y="'+(y-9)+'" text-anchor="middle" font-size="9.5" fill="var(--ink-2)" font-family="var(--mono)" font-weight="600">'+kfmt(p.val)+'</text>';
+  });
+  area="M"+X(0)+" "+Y(pts[0].val)+" "+pts.map((p,i)=>"L"+X(i)+" "+Y(p.val)).join(" ")+" L"+X(pts.length-1)+" "+Y(min)+" L"+X(0)+" "+Y(min)+" Z";
+  const zeroY=Y(0);
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block">'+
+    '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--personal)" stop-opacity="0.18"/><stop offset="1" stop-color="var(--personal)" stop-opacity="0"/></linearGradient></defs>'+
+    (min<0?'<line x1="'+pad+'" y1="'+zeroY+'" x2="'+(W-pad)+'" y2="'+zeroY+'" stroke="var(--line-strong)" stroke-dasharray="4 4"/>':'')+
+    '<path d="'+area+'" fill="url(#g)"/>'+
+    '<path d="'+path+'" fill="none" stroke="var(--personal)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'+
+    dots+labels+'</svg>';
+}
+function kfmt(n){const a=Math.abs(n);if(a>=1e6)return(n/1e6).toFixed(1).replace(".0","")+"м";if(a>=1e3)return Math.round(n/1e3)+"к";return Math.round(n);}
+
+/* =========================================================
+   ВСПОМОГАТЕЛЬНОЕ
+   ========================================================= */
+function head(t,p){return '<div class="page-head"><div class="t"><h1>'+t+'</h1><p>'+p+'</p></div></div>';}
+function statCard(name,val,foot,icls,ic,attrs=''){
+  return '<div class="stat '+(attrs?'clickable':'')+'" '+attrs+'><div class="top"><span class="name">'+name+'</span><span class="ico '+icls+'">'+svg(ic)+'</span></div><div class="val">'+val+'</div><div class="foot">'+foot+'</div></div>';
+}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function fmtDate(d){if(!d)return"—";const x=new Date(d);return x.toLocaleDateString("ru-RU",{day:"2-digit",month:"short"});}
+function toast(msg){const r=document.getElementById("toast-root");const el=document.createElement("div");el.className="toast";el.innerHTML='<span class="d"></span><span class="msg">'+esc(msg)+'</span>';r.appendChild(el);setTimeout(()=>{el.style.opacity="0";el.style.transition="opacity .3s";setTimeout(()=>el.remove(),300);},2200);}
+let _undoTimer=null;
+function showUndo(message,undoFn){
+  clearTimeout(_undoTimer);const root=document.getElementById("toast-root");
+  root.innerHTML='<div class="toast"><span class="d"></span><span class="msg">'+esc(message)+'</span><button class="undo" data-act="do-undo">Отменить</button></div>';
+  window._undoFn=undoFn;_undoTimer=setTimeout(()=>{root.innerHTML="";window._undoFn=null;},5000);
+}
+
+/* =========================================================
+   МОДАЛЬНЫЕ ОКНА
+   ========================================================= */
+function openModal(title,bodyHtml,onSave,saveLabel){
+  const root=document.getElementById("modal-root");
+  root.innerHTML='<div class="modal-bg" data-act="modal-bg"><div class="modal">'+
+    '<div class="modal-h"><h3>'+esc(title)+'</h3><button class="x-btn" data-act="close-modal">✕</button></div>'+
+    '<div class="modal-b">'+bodyHtml+'</div>'+
+    '<div class="modal-f"><button class="btn" data-act="close-modal">Отмена</button><button class="btn primary" id="modal-save">'+(saveLabel||"Сохранить")+'</button></div>'+
+  '</div></div>';
+  root._onSave=onSave;
+  setTimeout(()=>{const f=root.querySelector("input,select,textarea");if(f)f.focus();},30);
+}
+function closeModal(){document.getElementById("modal-root").innerHTML="";}
+function openSheet(title,bodyHtml){
+  const root=document.getElementById("modal-root");
+  root.innerHTML='<div class="modal-bg" data-act="modal-bg"><div class="modal">'+
+    '<div class="modal-h"><h3>'+esc(title)+'</h3><button class="x-btn" data-act="close-modal">✕</button></div>'+
+    '<div class="modal-b">'+bodyHtml+'</div></div></div>';
+  root._onSave=null;
+}
+function mval(id){const e=document.getElementById(id);return e?e.value:"";}
+
+function legalEntityForm(e){
+  e=e||{name:'',type:'ip'};
+  return '<div class="field"><label>Название</label><input class="inp" id="le-name" value="'+esc(e.name||'')+'" placeholder="Например: ИП Иванов И.И."></div><div class="field"><label>Тип</label><select class="inp" id="le-type"><option value="ip" '+(e.type==='ip'?'selected':'')+'>ИП</option><option value="ooo" '+(e.type==='ooo'?'selected':'')+'>ООО</option></select></div>';
+}
+function bizForm(b){
+  const isEdit=!!b,locked=isEdit&&hasBizTx(b.id);b=b||{name:'',emoji:'🏢',cashOpening:0,acceptsCash:false,legalEntityId:(S.legalEntities||[]).find(e=>e.type!=='cash')?.id||''};
+  const owners=(S.legalEntities||[]).filter(e=>e.type!=='cash');
+  return '<div class="row2"><div class="field"><label>Название</label><input class="inp" id="b-name" value="'+esc(b.name||'')+'" placeholder="Студия Куйбышева, 22"></div><div class="field"><label>Эмодзи</label><input class="inp" id="b-emoji" value="'+esc(b.emoji||'🏢')+'" maxlength="2"></div></div>'+
+    '<div class="field"><label>Юридическое лицо</label><select class="inp" id="b-entity">'+owners.map(e=>'<option value="'+e.id+'" '+(b.legalEntityId===e.id?'selected':'')+'>'+esc(e.name)+' · '+entityTypeLabel(e.type)+'</option>').join('')+'</select><div class="hint">После операций смена юрлица заблокирована, чтобы не нарушить историю.</div></div>'+
+    '<label class="fs13" style="display:flex;align-items:center;gap:9px;margin:4px 0 14px"><input type="checkbox" id="b-cash" '+(b.acceptsCash?'checked':'')+' '+(locked?'disabled':'')+'> Точка принимает наличные и использует общую кассу студий</label>'+
+    '<div class="field"><label>Начальный остаток наличных</label><input class="inp mono" id="b-cash-open" type="number" step="0.01" value="'+(Number(b.cashOpening)||0)+'" '+(locked?'disabled':'')+'><div class="hint">Безналичный остаток задаётся на банковском счёте. Здесь указывается только наличность точки на старте.</div></div>';
+}
+function accForm(a){
+  const isEdit=!!a,locked=isEdit&&(hasAccountTx(a.id)||a.sharedCash);a=a||{name:'',bankName:'',emoji:'💳',kind:'card',currency:baseCode(),opening:0,limit:0,scope:'personal',legalEntityId:'',businessIds:[]};
+  const kinds=[["card","Расчётный счёт / карта"],["credit","Кредитка / овердрафт"],["cash","Наличные"]];
+  const pointChecks=(S.businesses||[]).filter(b=>!a.sharedCash||b.acceptsCash).map(b=>'<label class="fs13" style="display:flex;align-items:center;gap:8px;padding:6px 0"><input type="checkbox" class="ac-biz-check" value="'+b.id+'" '+((a.businessIds||[]).includes(b.id)?'checked':'')+'> '+b.emoji+' '+esc(b.name)+' <span class="muted">· '+esc(entityById(b.legalEntityId)?.name||'')+'</span></label>').join('');
+  return '<div class="row2"><div class="field"><label>Название счёта</label><input class="inp" id="ac-name" value="'+esc(a.name)+'" placeholder="ООО · Альфа-Банк"></div><div class="field"><label>Банк</label><input class="inp" id="ac-bank" value="'+esc(a.bankName||'')+'" placeholder="Альфа-Банк"></div></div>'+
+    '<div class="row2"><div class="field"><label>Владелец</label><select class="inp" id="ac-scope" '+(locked?'disabled':'')+'><option value="personal" '+(a.scope!=='business'?'selected':'')+'>Личный счёт</option><option value="business" '+(a.scope==='business'?'selected':'')+'>Счёт бизнеса</option></select></div><div class="field"><label>Юридическое лицо</label><select class="inp" id="ac-entity" '+(locked?'disabled':'')+'><option value="">— не выбрано —</option>'+(S.legalEntities||[]).filter(e=>a.sharedCash||e.type!=='cash').map(e=>'<option value="'+e.id+'" '+(a.legalEntityId===e.id?'selected':'')+'>'+esc(e.name)+'</option>').join('')+'</select></div></div>'+
+    '<div class="row2"><div class="field"><label>Тип</label><select class="inp" id="ac-kind">'+kinds.map(k=>'<option value="'+k[0]+'" '+(a.kind===k[0]?'selected':'')+'>'+k[1]+'</option>').join('')+'</select></div><div class="field"><label>Валюта</label><select class="inp" id="ac-cur" '+(locked?'disabled':'')+'>'+S.currencies.map(c=>'<option value="'+c.code+'" '+(a.currency===c.code?'selected':'')+'>'+c.code+' '+esc(c.symbol)+'</option>').join('')+'</select></div></div>'+
+    '<div class="row2"><div class="field"><label>Стартовый баланс</label><input class="inp mono" id="ac-open" type="number" step="0.01" value="'+(Number(a.opening)||0)+'" '+(locked?'disabled':'')+'></div><div class="field"><label>Кредитный лимит</label><input class="inp mono" id="ac-limit" type="number" step="0.01" value="'+(Number(a.limit)||0)+'"></div></div>'+
+    '<div class="field"><label>Значок</label><input class="inp" id="ac-emoji" value="'+esc(a.emoji||'💳')+'" maxlength="2"></div>'+
+    '<div class="field"><label>Доступен точкам бизнеса</label><div style="max-height:190px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:7px 12px">'+(pointChecks||'<span class="muted fs13">Сначала добавьте точки</span>')+'</div><div class="hint">'+(a.sharedCash?'Общая касса может быть связана со студиями разных юрлиц.':'Для банковского счёта будут сохранены только точки выбранного юрлица.')+'</div></div>';
+}
+function debtForm(d,editing=false){
+  d=d||{dir:"in",who:"",amount:"",currency:baseCode(),date:TODAY(),due:daysAhead(30),note:""};
+  return '<div class="field"><label>Направление</label><select class="inp" id="d-dir" '+(editing?'disabled':'')+'><option value="in" '+(d.dir==="in"?"selected":"")+'>Мне должны (актив)</option><option value="out" '+(d.dir==="out"?"selected":"")+'>Я должен (обязательство)</option></select></div>'+
+    '<div class="field"><label>Кто / название</label><input class="inp" id="d-who" value="'+esc(d.who)+'" placeholder="Имя человека или банк"></div>'+
+    '<div class="row2"><div class="field"><label>Сумма</label><input class="inp mono" id="d-amount" type="number" step="0.01" value="'+(d.amount||"")+'" '+(editing?'disabled':'')+'></div>'+
+    '<div class="field"><label>Валюта долга</label><select class="inp" id="d-currency" '+(editing?'disabled':'')+'>'+(S.currencies||[]).map(c=>'<option value="'+c.code+'" '+((d.currency||baseCode())===c.code?'selected':'')+'>'+c.code+' · '+esc(c.symbol)+'</option>').join('')+'</select></div></div>'+
+    '<div class="row2"><div class="field"><label>Дата выдачи / получения</label><input class="inp" id="d-date" type="date" value="'+(d.date||TODAY())+'" '+(editing?'disabled':'')+'></div><div class="field"><label>Срок возврата</label><input class="inp" id="d-due" type="date" value="'+(d.due||"")+'"></div></div>'+
+    '<div class="field"><label>Комментарий</label><input class="inp" id="d-note" value="'+esc(d.note||"")+'"></div>'+ 
+    (editing?'<div class="fs12 muted">Сумма и валюта относятся к обязательству. Ранее созданные движения по счетам при редактировании не меняются.</div>':'<label class="fs13" style="display:flex;align-items:center;gap:9px;margin:4px 0 12px"><input type="checkbox" id="d-move" '+(personalAccounts().length?'checked':'')+'> Учесть выдачу или получение денег по личному счёту</label><div id="d-move-wrap"><div class="row2"><div class="field"><label>Личный счёт</label><select class="inp" id="d-account">'+selectOptions(personalAccounts(),'Нет активных личных счетов')+'</select></div><div class="field"><label id="d-account-amount-label">Сумма по счёту</label><input class="inp mono" id="d-account-amount" type="number" min="0" step="0.01"></div></div><div class="hint" id="d-move-hint"></div></div>');
+}
+function convertedAmount(amount,fromCode,toCode){return fromCode===toCode?(Number(amount)||0):toBase(amount,fromCode)/rate(toCode);}
+function updateDebtMoveForm(force=false){
+  const wrap=document.getElementById('d-move-wrap'),check=document.getElementById('d-move');if(!wrap||!check)return;
+  wrap.classList.toggle('hidden',!check.checked);if(!check.checked)return;
+  const acc=accById(mval('d-account')),out=document.getElementById('d-account-amount'),hint=document.getElementById('d-move-hint'),dir=mval('d-dir')||'in',debtCode=mval('d-currency')||baseCode(),amt=Number(mval('d-amount'))||0,accountCode=acc?.currency||baseCode();
+  if(out&&(force||out.dataset.manual!=='1'))out.value=amt?convertedAmount(amt,debtCode,accountCode).toFixed(2):'';
+  const label=document.getElementById('d-account-amount-label');if(label)label.textContent=(dir==='in'?'Сколько списать со счёта':'Сколько зачислить на счёт')+' ('+sym(accountCode)+')';
+  if(hint)hint.textContent=(dir==='in'?'Выдача долга уменьшит выбранный счёт.':'Получение займа увеличит выбранный счёт.')+(debtCode!==accountCode?' Долг останется в '+debtCode+', а фактическая сумма по счёту фиксируется отдельно.':'');
+}
+function debtMovementFromForm(){
+  if(!document.getElementById('d-move')?.checked)return null;
+  const account=accById(mval('d-account')),amount=Number(mval('d-account-amount'))||0;
+  if(!account||!isPersonalAccount(account)||account.archived||amount<=0)return null;
+  return {account,amount};
+}
+function repayMoveHtml(d){
+  if(d.kind==='owner_reimbursement')return '<div class="fs12 muted">Возврат по этому долгу проведите операцией «Вывод из бизнеса» с категорией «Возмещение личных расходов», затем отметьте здесь погашенную сумму.</div>';
+  return '<label class="fs13" style="display:flex;align-items:center;gap:9px;margin:4px 0 12px"><input type="checkbox" id="r-move" '+(personalAccounts().length?'checked':'')+'> Учесть движение по личному счёту</label><div id="r-move-wrap"><div class="row2"><div class="field"><label>Личный счёт</label><select class="inp" id="r-account">'+selectOptions(personalAccounts(),'Нет активных личных счетов')+'</select></div><div class="field"><label id="r-account-amount-label">Сумма по счёту</label><input class="inp mono" id="r-account-amount" type="number" min="0" step="0.01"></div></div><div class="hint" id="r-move-hint"></div></div>';
+}
+function updateRepayMoveForm(d,force=false){
+  const check=document.getElementById('r-move'),wrap=document.getElementById('r-move-wrap');if(!check||!wrap)return;
+  wrap.classList.toggle('hidden',!check.checked);if(!check.checked)return;
+  const acc=accById(mval('r-account')),out=document.getElementById('r-account-amount'),debtAmt=Number(mval('r-amt'))||0,accountCode=acc?.currency||baseCode(),debtCode=debtCurrency(d);
+  if(out&&(force||out.dataset.manual!=='1'))out.value=debtAmt?convertedAmount(debtAmt,debtCode,accountCode).toFixed(2):'';
+  const label=document.getElementById('r-account-amount-label');if(label)label.textContent=(d.dir==='in'?'Сколько зачислить на счёт':'Сколько списать со счёта')+' ('+sym(accountCode)+')';
+  const hint=document.getElementById('r-move-hint');if(hint)hint.textContent=(d.dir==='in'?'Возврат вам увеличит выбранный счёт.':'Ваш платёж уменьшит выбранный счёт.')+(debtCode!==accountCode?' Погашение отмечается в '+debtCode+', движение фиксируется в '+accountCode+'.':'');
+}
+function goalForm(g){
+  g=g||{name:"",target:"",saved:0,due:daysAhead(180),note:""};
+  return '<div class="field"><label>Название цели</label><input class="inp" id="g-name" value="'+esc(g.name)+'" placeholder="Подушка безопасности"></div>'+
+    '<div class="row2"><div class="field"><label>Нужно накопить</label><input class="inp mono" id="g-target" type="number" step="0.01" value="'+(g.target||"")+'"></div>'+
+    '<div class="field"><label>Уже отложено</label><input class="inp mono" id="g-saved" type="number" step="0.01" value="'+(g.saved||0)+'"></div></div>'+
+    '<div class="field"><label>Желаемый срок</label><input class="inp" id="g-due" type="date" value="'+(g.due||"")+'"></div>'+
+    '<div class="field"><label>Комментарий</label><input class="inp" id="g-note" value="'+esc(g.note||"")+'"></div>';
+}
+
+/* =========================================================
+   ОБРАБОТКА ДЕЙСТВИЙ
+   ========================================================= */
+async function awaitSignOut(){
+  try{ const {error}=await window.PFBackend.signOut();if(error)throw error; }
+  catch(e){ toast("Не удалось выйти — проверьте соединение"); }
+}
+document.addEventListener("click",e=>{
+  const el=e.target.closest("[data-act]"); if(!el)return;
+  const act=el.dataset.act;
+
+  if(act==="logout"){if(window.PFBackend)awaitSignOut();return;}
+  if(act==="do-undo"){if(window._undoFn){window._undoFn();window._undoFn=null;}clearTimeout(_undoTimer);document.getElementById("toast-root").innerHTML="";haptic(12);render();return;}
+  if(act==="cycle-theme"){cycleTheme();return;}
+  if(act==="set-theme"){setTheme(el.dataset.theme);return;}
+  if(act==="nav"){closeModal();if(S.ui.view==="add")captureAddDraft();if(el.dataset.v==="add")resetAddFormSession();S.ui.view=el.dataset.v;persist();render();if(S.ui.view==="add")setTimeout(refreshAddForm,0);return;}
+  if(act==="overview-period"){S.ui.overviewPeriod=el.dataset.p;persist();render();return;}
+  if(act==="open-tx-filter"){S.ui.view="tx";S.ui.txFilter=el.dataset.filter||"all";S.ui.txPeriod="all";S.ui.txAccount=null;S.ui.txMonth=null;persist();render();return;}
+  if(act==="open-account-tx"){S.ui.view="tx";S.ui.txFilter="all";S.ui.txPeriod="all";S.ui.txAccount=el.dataset.id;S.ui.txMonth=null;persist();render();return;}
+  if(act==="drill-month"){S.ui.view="tx";S.ui.txFilter="all";S.ui.txPeriod="month";S.ui.txMonth=el.dataset.month;S.ui.txAccount=null;persist();render();return;}
+  if(act==="more-menu"){
+    const items=[["tx","Операции",I.tx],["business","Бизнес",I.biz],["forecast","Прогноз",I.forecast],["goals","Цели",I.goal],["settings","Настройки",I.settings]];
+    const body=items.map(([id,label,ic])=>'<button class="sheet-item '+(S.ui.view===id?'on':'')+'" data-act="nav" data-v="'+id+'">'+svg(ic)+'<span>'+label+'</span></button>').join("");
+    openSheet("Разделы",body);
+    return;
+  }
+  if(act==="dismiss-reminder"){S.meta.lastEntryDate=TODAY();persist();render();return;}
+
+  // add form
+  if(act==="pick-type"){
+    haptic(8);resetAddFormSession();closeModal();document.getElementById("f-type").value=el.dataset.t;S.meta=S.meta||{};S.meta.addType=el.dataset.t;refreshAddForm();captureAddDraft();persist();return;
+  }
+  if(act==="open-add-types"){haptic(8);openSheet("Все типы операций",compactMoreTypesHtml());return;}
+  if(act==="amount-key"){compactPressAmount(el.dataset.k);return;}
+  if(act==="use-preset"){applyPreset(el.dataset.id);setTimeout(updateCompactAddChrome,0);return;}
+  if(act==="save-current-preset"){
+    const d=captureAddDraft();if(!d){toast("Для этого типа пресеты не поддерживаются");return;}
+    openModal("Новый пресет",'<div class="field"><label>Название</label><input class="inp" id="preset-label" placeholder="Например: Выручка за смену"></div>',()=>{const label=mval("preset-label").trim();if(!label){toast("Введите название");return false;}S.presets.push({id:uid(),label,...d});persist();closeModal();const strip=document.getElementById("compact-presets");if(strip)strip.innerHTML=compactPresetHtml();toast("Пресет сохранён");});return;
+  }
+  if(act==="save-tx"){saveTx();return;}
+  if(act==="split-pbe"){document.querySelectorAll(".pbe-amount").forEach(x=>delete x.dataset.manual);distributePbe();return;}
+
+  // tx list
+  if(act==="tx-filter"){S.ui.txFilter=el.dataset.f;render();return;}
+  if(act==="tx-period"){S.ui.txPeriod=el.dataset.p;S.ui.txMonth=null;render();return;}
+  if(act==="clear-tx-account"){S.ui.txAccount=null;persist();render();return;}
+  if(act==="clear-tx-month"){S.ui.txMonth=null;S.ui.txPeriod="all";persist();render();return;}
+  if(act==="del-tx"){
+    const index=S.tx.findIndex(t=>t.id===el.dataset.id),tx=S.tx[index];if(!tx)return;
+    if(tx.debtId&&String(tx.type).startsWith("debt_")){toast("Движения по долгам удаляются вместе с долгом в разделе «Долги»");return;}
+    const removedDebts=(tx.debtIds||[]).map(id=>({index:S.debts.findIndex(d=>d.id===id),debt:S.debts.find(d=>d.id===id)})).filter(x=>x.debt);
+    S.tx.splice(index,1);if(tx.debtIds?.length)S.debts=S.debts.filter(d=>!tx.debtIds.includes(d.id));persist();render();haptic(12);
+    showUndo("Операция удалена",()=>{if(!S.tx.some(x=>x.id===tx.id))S.tx.splice(Math.min(index,S.tx.length),0,tx);for(const x of removedDebts)if(!S.debts.some(d=>d.id===x.debt.id))S.debts.splice(Math.min(Math.max(0,x.index),S.debts.length),0,x.debt);persist();});return;
+  }
+
+  // debts
+  if(act==="add-debt"){openModal("Новый долг",debtForm({dir:el.dataset.dir,date:TODAY(),due:daysAhead(30)}),()=>{
+    const who=mval("d-who").trim(),amt=+mval("d-amount"),dir=mval("d-dir"),currency=mval("d-currency")||baseCode();
+    if(!who||!amt){toast("Заполните имя и сумму");return false;}
+    const move=debtMovementFromForm();if(document.getElementById('d-move')?.checked&&!move){toast("Выберите личный счёт и сумму движения");return false;}
+    const id=uid(),debt={id,dir,who,amount:amt,currency,date:mval("d-date"),due:mval("d-due"),note:mval("d-note"),repaid:[]};S.debts.push(debt);
+    if(move)S.tx.push({id:uid(),type:dir==="in"?"debt_issue":"debt_borrow",account:move.account.id,amount:move.amount,debtAmount:amt,debtId:id,cat:dir==="in"?"Выдача долга":"Получение займа",date:debt.date,note:who});
+    S.meta.lastEntryDate=TODAY();persist();render();toast("Долг добавлен");
+  });setTimeout(()=>updateDebtMoveForm(true),0);return;}
+  if(act==="edit-debt"){const d=S.debts.find(x=>x.id===el.dataset.id);openModal("Изменить долг",debtForm(d,true),()=>{
+    d.dir=mval("d-dir");d.who=mval("d-who").trim();d.amount=+mval("d-amount");d.currency=mval("d-currency")||baseCode();d.date=mval("d-date");d.due=mval("d-due");d.note=mval("d-note");
+    persist();render();toast("Сохранено");
+  });return;}
+  if(act==="del-debt"){S.tx=S.tx.filter(t=>t.debtId!==el.dataset.id);S.debts=S.debts.filter(d=>d.id!==el.dataset.id);persist();render();toast("Долг и связанные движения удалены");return;}
+  if(act==="repay"){const d=S.debts.find(x=>x.id===el.dataset.id),rem=debtRemaining(d),frac=Number(el.dataset.frac)||1,initial=Math.round(Math.min(rem,rem*frac)*100)/100;window.__currentRepayDebt=d;
+    openModal(d.dir==="in"?"Отметить возврат":"Отметить платёж",
+      '<div class="field"><label>Сумма (осталось '+fmt(rem,false,debtCurrency(d))+')</label><input class="inp mono" id="r-amt" type="number" step="0.01" value="'+initial+'" max="'+rem+'"></div>'+ 
+      '<div class="field"><label>Дата</label><input class="inp" id="r-date" type="date" value="'+TODAY()+'"></div>'+repayMoveHtml(d),
+      ()=>{const debtAmount=Math.min(+mval("r-amt")||0,rem);if(!debtAmount){toast("Введите сумму");return false;}let txId=null;
+        if(document.getElementById('r-move')?.checked){const account=accById(mval('r-account')),accountAmount=Number(mval('r-account-amount'))||0;if(!account||!isPersonalAccount(account)||account.archived||accountAmount<=0){toast("Выберите личный счёт и сумму движения");return false;}txId=uid();S.tx.push({id:txId,type:d.dir==='in'?'debt_repayment_in':'debt_repayment_out',account:account.id,amount:accountAmount,debtAmount,debtId:d.id,cat:d.dir==='in'?'Возврат выданного долга':'Погашение займа',date:mval('r-date'),note:d.who});}
+        d.repaid=d.repaid||[];d.repaid.push({amount:debtAmount,date:mval("r-date"),txId});S.meta.lastEntryDate=TODAY();persist();render();toast("Отмечено");});
+    setTimeout(()=>updateRepayMoveForm(d,true),0);return;}
+
+  // legal entities
+  if(act==="add-entity"){openModal("Новое юридическое лицо",legalEntityForm(),()=>{const name=mval("le-name").trim();if(!name){toast("Введите название");return false;}S.legalEntities.push({id:uid(),name,type:mval("le-type"),archived:false});persist();render();toast("Юрлицо добавлено");});return;}
+  if(act==="edit-entity"){const x=entityById(el.dataset.id);if(x?.system){toast("Системная карточка кассы изменяется через раздел «Счета»");return;}openModal("Изменить юридическое лицо",legalEntityForm(x),()=>{const name=mval("le-name").trim();if(!name){toast("Введите название");return false;}x.name=name;x.type=mval("le-type");persist();render();toast("Сохранено");});return;}
+  if(act==="del-entity"){const x=entityById(el.dataset.id);if(x?.system){toast("Системную карточку кассы удалить нельзя");return;}if(hasEntityLinks(el.dataset.id)){toast("Сначала перенесите связанные точки и счета");return;}S.legalEntities=S.legalEntities.filter(x=>x.id!==el.dataset.id);persist();render();toast("Юрлицо удалено");return;}
+
+  // business
+  if(act==="add-biz"){openModal("Новая точка бизнеса",bizForm(),()=>{const n=mval("b-name").trim(),legalEntityId=mval("b-entity");if(!n||!legalEntityId){toast("Введите название и выберите юрлицо");return false;}const acceptsCash=document.getElementById("b-cash").checked,b={id:uid(),name:n,emoji:mval("b-emoji")||"🏢",legalEntityId,cashOpening:+mval("b-cash-open")||0,acceptsCash,archived:false};S.businesses.push(b);if(acceptsCash){const cash=cashPoolAccounts()[0];if(cash&&!cash.businessIds.includes(b.id))cash.businessIds.push(b.id);}persist();render();toast("Точка добавлена");});return;}
+  if(act==="edit-biz"){const b=bizById(el.dataset.id),locked=hasBizTx(b.id);openModal("Изменить точку",bizForm(b),()=>{const n=mval("b-name").trim();if(!n){toast("Введите название");return false;}b.name=n;b.emoji=mval("b-emoji")||"🏢";const acceptsCash=document.getElementById("b-cash").checked;b.acceptsCash=acceptsCash;if(!locked){b.legalEntityId=mval("b-entity");b.cashOpening=+mval("b-cash-open")||0;}const cash=accById('acc-studios-cash');if(cash){cash.businessIds=(cash.businessIds||[]).filter(id=>id!==b.id);if(acceptsCash)cash.businessIds.push(b.id);}persist();render();toast("Сохранено");});return;}
+  if(act==="adjust-biz"){const b=bizById(el.dataset.id),current=bizCashBalance(b.id),cash=businessAccountsForBiz(b.id,'cash')[0];if(!cash){toast("Для точки не настроена общая касса");return;}openModal("Сверить наличные точки",'<div class="field"><label>Фактические наличные ('+C()+')</label><input class="inp mono" id="adj-target" type="number" step="0.01" value="'+current+'"></div><div class="field"><label>Дата</label><input class="inp" id="adj-date" type="date" value="'+TODAY()+'"></div><div class="field"><label>Комментарий</label><input class="inp" id="adj-note" placeholder="По фактическому пересчёту"></div><div class="fs12 muted">Корректировка изменит наличные этой студии и общий остаток кассы.</div>',()=>{const target=Number(mval("adj-target"));if(!Number.isFinite(target)){toast("Введите остаток");return false;}const delta=target-bizCashBalance(b.id);if(Math.abs(delta)<1e-9){toast("Наличные уже совпадают");return false;}S.tx.push({id:uid(),type:"biz_adjustment",biz:b.id,account:cash.id,paymentMethod:"cash",amount:Math.abs(delta),delta,cat:"Корректировка наличных",date:mval("adj-date")||TODAY(),note:mval("adj-note").trim()});persist();render();toast("Наличные скорректированы");});return;}
+  if(act==="del-biz"){if(hasBizTx(el.dataset.id)){toast("По точке есть операции — удалить её нельзя");return;}S.businesses=S.businesses.filter(b=>b.id!==el.dataset.id);(S.accounts||[]).forEach(a=>a.businessIds=(a.businessIds||[]).filter(id=>id!==el.dataset.id));persist();render();toast("Точка удалена");return;}
+
+  // accounts
+  if(act==="add-acc"){openModal("Новый счёт",accForm(),()=>{const n=mval("ac-name").trim(),scope=mval("ac-scope"),legalEntityId=mval("ac-entity");if(!n){toast("Введите название");return false;}if(scope==="business"&&!legalEntityId){toast("Для счёта бизнеса выберите юрлицо");return false;}const businessIds=[...document.querySelectorAll('.ac-biz-check:checked')].map(x=>x.value).filter(id=>scope==='business'&&bizById(id)?.legalEntityId===legalEntityId);S.accounts.push({id:uid(),name:n,bankName:mval("ac-bank").trim(),emoji:mval("ac-emoji")||"💳",kind:mval("ac-kind"),currency:mval("ac-cur"),opening:+mval("ac-open")||0,limit:+mval("ac-limit")||0,archived:false,scope,legalEntityId:scope==='business'?legalEntityId:null,businessIds:scope==='business'?businessIds:[]});persist();render();toast("Счёт добавлен");});return;}
+  if(act==="edit-acc"){const a=accById(el.dataset.id),locked=hasAccountTx(a.id);openModal("Изменить счёт",accForm(a),()=>{const n=mval("ac-name").trim();if(!n){toast("Введите название");return false;}a.name=n;a.bankName=mval("ac-bank").trim();a.emoji=mval("ac-emoji")||"💳";a.kind=a.sharedCash?'cash':mval("ac-kind");a.limit=a.sharedCash?0:(+mval("ac-limit")||0);if(!locked&&!a.sharedCash){a.scope=mval("ac-scope");a.legalEntityId=a.scope==='business'?mval("ac-entity"):null;a.currency=mval("ac-cur");a.opening=+mval("ac-open")||0;}if(a.sharedCash){a.scope='business';a.legalEntityId='le-cash';a.currency='BYN';a.opening=0;a.businessIds=[...document.querySelectorAll('.ac-biz-check:checked')].map(x=>x.value).filter(id=>bizById(id)?.acceptsCash);}else a.businessIds=a.scope==='business'?[...document.querySelectorAll('.ac-biz-check:checked')].map(x=>x.value).filter(id=>bizById(id)?.legalEntityId===a.legalEntityId):[];persist();render();toast("Сохранено");});return;}
+  if(act==="adjust-acc"){const a=accById(el.dataset.id);if(isCashPoolAccount(a)){toast("Наличные сверяются отдельно на карточках студий");return;}const current=accountBalance(a.id);openModal("Сверить баланс счёта",'<div class="field"><label>Фактический баланс ('+sym(a.currency)+')</label><input class="inp mono" id="adj-target" type="number" step="0.01" value="'+current+'"></div><div class="field"><label>Дата сверки</label><input class="inp" id="adj-date" type="date" value="'+TODAY()+'"></div><div class="field"><label>Комментарий</label><input class="inp" id="adj-note" placeholder="По банковской выписке"></div>',()=>{const target=Number(mval("adj-target"));if(!Number.isFinite(target)){toast("Введите баланс");return false;}const delta=target-accountBalance(a.id);if(Math.abs(delta)<1e-9){toast("Баланс уже совпадает");return false;}S.tx.push({id:uid(),type:"account_adjustment",account:a.id,amount:Math.abs(delta),delta,cat:"Корректировка баланса",date:mval("adj-date")||TODAY(),note:mval("adj-note").trim()});persist();render();toast("Баланс скорректирован");});return;}
+  if(act==="archive-acc"){const a=accById(el.dataset.id);if(a?.system){toast("Системную общую кассу нельзя архивировать");return;}a.archived=true;persist();render();toast("Счёт перемещён в архив");return;}
+  if(act==="restore-acc"){accById(el.dataset.id).archived=false;persist();render();toast("Счёт возвращён из архива");return;}
+  if(act==="del-acc"){const a=accById(el.dataset.id);if(a?.system){toast("Системную общую кассу удалить нельзя");return;}if(hasAccountTx(el.dataset.id)){a.archived=true;persist();render();toast("Счёт с историей перемещён в архив");return;}S.accounts=S.accounts.filter(a=>a.id!==el.dataset.id);persist();render();toast("Счёт удалён");return;}
+
+  // currencies
+  if(act==="add-cur"){const code=mval("cur-code").trim().toUpperCase();const symb=mval("cur-sym").trim();const r=+mval("cur-rate");
+    if(!code||!symb||!r){toast("Заполните код, символ и курс");return;}
+    if(S.currencies.some(c=>c.code===code)){toast("Такая валюта уже есть");return;}
+    S.currencies.push({code,symbol:symb,rate:r});persist();render();toast("Валюта добавлена");return;}
+  if(act==="del-cur"){const c=S.currencies[+el.dataset.i];
+    if(c.code===baseCode()){toast("Нельзя удалить базовую валюту");return;}
+    if(S.accounts.some(a=>a.currency===c.code)||S.debts.some(d=>debtCurrency(d)===c.code)){toast("Валюта используется в счетах или долгах — сначала измените их");return;}
+    S.currencies.splice(+el.dataset.i,1);persist();render();return;}
+  if(act==="save-base"){const nb=mval("s-base");if(nb){S.settings.baseCurrency=nb;const bc=curObj(nb);if(bc)bc.rate=1;}persist();render();toast("Базовая валюта обновлена");updateRatesFromNBRB().then(ok=>{if(ok){render();toast("Курсы НБРБ обновлены");}});return;}
+  if(act==="refresh-rates"){updateRatesFromNBRB().then(ok=>{toast(ok?'Курсы обновлены':'НБ РБ недоступен');render();});return;}
+
+  // goals
+  if(act==="add-goal"){openModal("Новая цель",goalForm(),()=>{
+    const n=mval("g-name").trim();const t=+mval("g-target");if(!n||!t){toast("Введите название и сумму");return false;}
+    S.goals.push({id:uid(),name:n,target:t,saved:+mval("g-saved")||0,due:mval("g-due"),note:mval("g-note")});persist();render();toast("Цель создана");});
+    return;}
+  if(act==="edit-goal"){const g=S.goals.find(x=>x.id===el.dataset.id);openModal("Изменить цель",goalForm(g),()=>{
+    g.name=mval("g-name").trim();g.target=+mval("g-target");g.saved=+mval("g-saved")||0;g.due=mval("g-due");g.note=mval("g-note");persist();render();toast("Сохранено");});
+    return;}
+  if(act==="del-goal"){S.goals=S.goals.filter(g=>g.id!==el.dataset.id);persist();render();toast("Цель удалена");return;}
+  if(act==="add-to-goal"){const g=S.goals.find(x=>x.id===el.dataset.id);
+    openModal("Отложить в цель «"+g.name+"»",'<div class="field"><label>Сумма</label><input class="inp mono" id="ag-amt" type="number" step="0.01" placeholder="0,00"></div><div class="fs12 muted">Добавится к накопленному по цели.</div>',
+    ()=>{const a=+mval("ag-amt");if(!a){toast("Введите сумму");return false;}g.saved+=a;persist();render();toast("Отложено "+fmt(a));});
+    return;}
+
+  // settings
+  if(act==="save-form-preset"){
+    const d=S.meta?.addDraft,allowed=['in','out','biz_income','biz_expense','draw','contribution'];if(!d||!allowed.includes(d.type)){toast("Сначала настройте поддерживаемую форму в разделе «Внести операцию»");return;}
+    openModal("Новый пресет",'<div class="field"><label>Название</label><input class="inp" id="preset-label" placeholder="Например: Выручка за смену"></div>',()=>{const label=mval("preset-label").trim();if(!label){toast("Введите название");return false;}S.presets.push({id:uid(),label,...d});persist();render();toast("Пресет сохранён");});return;
+  }
+  if(act==="del-preset"){S.presets=S.presets.filter(p=>p.id!==el.dataset.id);persist();render();haptic(12);toast("Пресет удалён");return;}
+  if(act==="add-cat"){const k=el.dataset.kind;const inp=document.getElementById("cat-"+k);const v=inp.value.trim();if(!v)return;if(!S.categories[k].includes(v))S.categories[k].push(v);persist();render();return;}
+  if(act==="del-cat"){const k=el.dataset.kind;S.categories[k].splice(+el.dataset.i,1);persist();render();return;}
+  if(act==="save-reminder"){S.settings.reminderTime=mval("s-remind");S.settings.notify=document.getElementById("s-notify").checked;
+    if(S.settings.notify&&"Notification"in window&&Notification.permission!=="granted"){Notification.requestPermission();}
+    persist();render();toast("Напоминание настроено");return;}
+  if(act==="export"){downloadJSON();return;}
+  if(act==="import"){importJSON();return;}
+  if(act==="reset"){openModal("Начать с чистого листа?",'<p style="margin:0;color:var(--ink-2)">Все операции, долги и цели будут удалены. Балансы счетов обнулятся. Можно оставить структуру — счета, точки бизнеса, валюты и категории.</p><label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13.5px"><input type="checkbox" id="keep-biz" checked> Оставить счета, точки бизнеса, валюты и категории</label>',
+    ()=>{const keep=document.getElementById("keep-biz").checked;const fresh=seed();
+      if(keep){S={...fresh,settings:S.settings,currencies:S.currencies,legalEntities:S.legalEntities,accounts:S.accounts.map(a=>({...a,opening:0,archived:false})),businesses:S.businesses.map(b=>({...b,opening:0,cashOpening:0,archived:false})),categories:S.categories,presets:S.presets,tx:[],debts:[],goals:[],meta:{...fresh.meta,lastEntryDate:null,lastNotifiedDate:null,lastUsed:{},created:TODAY()}};}
+      else {S={...fresh,accounts:fresh.accounts.map(a=>({...a,opening:0})),businesses:fresh.businesses.map(b=>({...b,opening:0,cashOpening:0})),tx:[],debts:[],goals:[]};}
+      S.ui={view:"overview",txFilter:"all",txPeriod:"all",txAccount:null,txMonth:null,overviewPeriod:"month"};applyTheme();persist();render();toast("Готово — можно вести реальный учёт");},"Да, очистить");
+    return;}
+
+  // modal
+  if(act==="close-modal"||act==="modal-bg"){if(act==="modal-bg"&&e.target!==el)return;closeModal();return;}
+});
+document.addEventListener("click",e=>{
+  if(e.target.id==="modal-save"){const root=document.getElementById("modal-root");const fn=root._onSave;if(fn){const r=fn();if(r!==false)closeModal();}}
+});
+
+function completeSavedTx(t,message,saveCtx){
+  rememberLastUsed(t.type);S.meta=S.meta||{};S.meta.addType=t.type;S.meta.lastEntryDate=TODAY();
+  const amountInput=document.getElementById('f-amount');if(amountInput)amountInput.value='0';
+  const draft=currentPresetDraft();if(draft)S.meta.addDraft=draft;
+  const debtIds=[...(t.debtIds||[])],after=saveCtx?.account?accountBalance(saveCtx.account.id):null;
+  persist();if(t.type==='personal_biz_expense')distributePbe();updateCompactAddChrome(false);
+  if(saveCtx?.account&&after!=null)animateCompactBalance(saveCtx.balance,after,saveCtx.account);else updateCompactAddChrome();
+  showUndo(message,()=>{S.tx=S.tx.filter(x=>x.id!==t.id);if(debtIds.length)S.debts=S.debts.filter(d=>!debtIds.includes(d.id));persist();});
+}
+function saveTx(){
+  const type=document.getElementById("f-type").value,amount=+mval("f-amount");
+  if(!amount||amount<=0){toast("Введите сумму больше нуля");return;}
+  const saveCtx=compactBalanceContext();
+  const date=mval("f-date")||TODAY(),note=mval("f-note").trim();
+  if(type==="transfer"||type==="entity_transfer"||type==="cash_transfer"){
+    const {from,to,toAmount}=transferAmounts();
+    if(!from||!to||from.archived||to.archived||from.id===to.id){toast("Выберите два разных активных счёта");return;}
+    if(type==="transfer"&&!sameAccountOwner(from,to)){toast("Обычный перевод возможен только внутри одного владельца");return;}
+    if(type==="entity_transfer"&&(!isBankBusinessAccount(from)||!isBankBusinessAccount(to)||from.legalEntityId===to.legalEntityId)){toast("Выберите банковские счета двух разных юридических лиц");return;}
+    let biz=null;
+    if(type==="cash_transfer"){
+      biz=bizById(mval("f-biz"));
+      const valid=biz&&accountAvailableForBiz(from,biz,isCashPoolAccount(from)?'cash':'bank')&&accountAvailableForBiz(to,biz,isCashPoolAccount(to)?'cash':'bank');
+      if(!valid||isCashPoolAccount(from)===isCashPoolAccount(to)){toast("Выберите общую кассу и банковский счёт выбранной студии");return;}
+    }
+    const t={id:uid(),type,biz:biz?.id,fromAccount:from.id,toAccount:to.id,amount,toAmount,cat:type==="transfer"?"Перевод между счетами":type==="cash_transfer"?"Инкассация":mval("f-cat"),date,note,rateFrom:rate(from.currency),rateTo:rate(to.currency)};
+    haptic(16);pulseCompactAmount();S.tx.push(t);completeSavedTx(t,"Перемещение сохранено · "+fmt(amount,false,from.currency),saveCtx);return;
+  }
+  if(type==="personal_biz_expense"){
+    const pa=accById(mval("f-acc"));if(!pa||pa.archived||!isPersonalAccount(pa)){toast("Добавьте и выберите личный счёт");return;}
+    const allocations=selectedPbeAllocations(),allocated=allocations.reduce((s,a)=>s+a.amount,0);
+    if(!allocations.length){toast("Выберите хотя бы одну точку бизнеса");return;}
+    if(Math.abs(allocated-amount)>0.01){toast("Распределённая сумма должна совпадать с общей");return;}
+    const settlement=mval("f-pbe-settlement")||"reimburse",id=uid(),debtIds=[];
+    const t={id,type,account:pa.id,amount,allocations,settlement,cat:mval("f-cat"),date,note};
+    if(settlement==="reimburse"){
+      const byEntity={};for(const a of allocations){const b=bizById(a.biz);if(!b)continue;byEntity[b.legalEntityId]=(byEntity[b.legalEntityId]||0)+a.amount;}
+      for(const [legalEntityId,sum] of Object.entries(byEntity)){const entity=entityById(legalEntityId),did=uid();debtIds.push(did);S.debts.push({id:did,dir:"in",who:(entity?.name||"Бизнес")+" · возмещение личных расходов",amount:sum,currency:pa.currency,date,due:mval("f-pbe-due"),note:"Личная оплата: "+(mval("f-cat")||"Расход бизнеса")+(note?" · "+note:""),repaid:[],kind:"owner_reimbursement",legalEntityId,sourceTxId:id});}
+      t.debtIds=debtIds;
+    }
+    haptic(16);pulseCompactAmount();S.tx.push(t);completeSavedTx(t,"Личная оплата распределена · "+fmt(amount,false,pa.currency),saveCtx);return;
+  }
+  const t={id:uid(),type,amount,cat:mval("f-cat"),date,note};
+  if(["draw","contribution","biz_income","biz_expense"].includes(type)){
+    t.biz=mval("f-biz");const b=bizById(t.biz),paymentMethod=selectedPaymentMethod(),ba=accById(mval("f-biz-acc"));
+    if(!b){toast("Выберите точку бизнеса");return;}
+    if(paymentMethod==='cash'&&!b.acceptsCash){toast("Эта точка не принимает наличные");return;}
+    if(!accountAvailableForBiz(ba,b,paymentMethod)){toast(paymentMethod==='cash'?"Выберите общую кассу":"Выберите банковский счёт, связанный с этой точкой");return;}
+    t.paymentMethod=paymentMethod;
+    if(type==="biz_income"||type==="biz_expense")t.account=ba.id;
+    else{
+      const pa=accById(mval("f-acc"));if(!pa||pa.archived||!isPersonalAccount(pa)){toast("Добавьте и выберите личный счёт");return;}
+      t.account=pa.id;t.businessAccount=ba.id;t.businessAmount=pa.currency===ba.currency?amount:toBase(amount,pa.currency)/rate(ba.currency);
+    }
+  }else if(type==="in"||type==="out"){
+    const pa=accById(mval("f-acc"));if(!pa||pa.archived||!isPersonalAccount(pa)){toast("Добавьте и выберите личный счёт");return;}t.account=pa.id;
+  }
+  haptic(16);pulseCompactAmount();S.tx.push(t);completeSavedTx(t,"Операция сохранена · "+fmt(amount,false,accById(t.account)?.currency||baseCode()),saveCtx);
+}
+
+function downloadJSON(){
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");
+  a.href=url;a.download="finance-backup-"+TODAY()+".json";a.click();URL.revokeObjectURL(url);
+  toast("Копия скачана");
+}
+function importJSON(){
+  const inp=document.createElement("input");inp.type="file";inp.accept=".json";
+  inp.onchange=()=>{const f=inp.files[0];if(!f)return;const r=new FileReader();
+    r.onload=()=>{try{const data=JSON.parse(r.result);S=data;ensureBusinessModel();ensureUxState();S.ui={view:"overview",txFilter:"all",txPeriod:"all",txAccount:null,txMonth:null,overviewPeriod:"month"};applyTheme();persist();render();toast("Данные загружены и обновлены");}catch(err){toast("Не удалось прочитать файл");}};
+    r.readAsText(f);};
+  inp.click();
+}
+
+/* обновление формы добавления при вводе */
+document.addEventListener("change",e=>{
+  if(e.target.id&&e.target.id.startsWith("f-")&&e.isTrusted)addFormTouched.add(e.target.id);
+  if(e.target.id==="f-type")refreshAddForm();
+  if(e.target.id==="f-acc"||e.target.id==="f-biz-acc"){updateAmountCurrencyLabel();if(document.getElementById("f-type")?.value==="personal_biz_expense")updatePbeSummary();}
+  if(e.target.id==="f-payment")refreshAddForm();
+  if(e.target.id==="f-biz")refreshAddForm();
+  if(e.target.id==="f-from-acc"||e.target.id==="f-to-acc"){ensureTransferAccounts();updateAmountCurrencyLabel();updateTransferPreview();}
+  if(e.target.classList?.contains("pbe-check")){document.querySelectorAll(".pbe-amount").forEach(x=>delete x.dataset.manual);distributePbe();}
+  if(e.target.id==="f-pbe-settlement")updatePbeSettlement();
+  if(["d-dir","d-currency","d-account","d-move"].includes(e.target.id))updateDebtMoveForm(true);
+  if(["r-account","r-move"].includes(e.target.id)&&window.__currentRepayDebt)updateRepayMoveForm(window.__currentRepayDebt,true);
+  if(e.target.dataset&&e.target.dataset.act==="rate-input"){
+    const c=curObj(e.target.dataset.code);if(c){c.rate=+e.target.value||1;persist();render();}
+  }
+  if(e.target.id&&e.target.id.startsWith("f-"))captureAddDraft();
+});
+
+document.addEventListener("input",e=>{
+  const type=document.getElementById("f-type")?.value;
+  if(e.target.id&&e.target.id.startsWith("f-")&&e.isTrusted)addFormTouched.add(e.target.id);
+  if(e.target.id==="f-amount"&&["transfer","entity_transfer","cash_transfer"].includes(type))updateTransferPreview();
+  if(e.target.id==="f-amount"&&type==="personal_biz_expense"){
+    const manual=[...document.querySelectorAll('.pbe-amount')].some(x=>x.dataset.manual==='1');if(manual)updatePbeSummary();else distributePbe();
+  }
+  if(e.target.classList?.contains("pbe-amount")){e.target.dataset.manual='1';updatePbeSummary();}
+  if(e.target.id==="d-amount")updateDebtMoveForm(false);
+  if(e.target.id==="d-account-amount")e.target.dataset.manual='1';
+  if(e.target.id==="r-amt"&&window.__currentRepayDebt)updateRepayMoveForm(window.__currentRepayDebt,false);
+  if(e.target.id==="r-account-amount")e.target.dataset.manual='1';
+  if(e.target.id&&e.target.id.startsWith("f-"))captureAddDraft();
+  if(e.target.id==="f-amount")updateCompactAddChrome();
+});
+
+document.addEventListener("keydown",e=>{
+  if(!S||S.ui.view!=="add"||!document.getElementById("f-amount")||document.getElementById("modal-root")?.innerHTML)return;
+  const tag=(e.target?.tagName||"").toLowerCase();if(["input","select","textarea"].includes(tag))return;
+  if(/^[0-9]$/.test(e.key)){e.preventDefault();compactPressAmount(e.key);}
+  else if(e.key==="."||e.key===","){e.preventDefault();compactPressAmount(".");}
+  else if(e.key==="Backspace"){e.preventDefault();compactPressAmount("back");}
+  else if(e.key==="Enter"){e.preventDefault();saveTx();}
+});
+
+/* =========================================================
+   НАПОМИНАНИЯ (пока приложение открыто)
+   ========================================================= */
+function reminderTick(){
+  if(!S||!S.settings.notify)return;
+  const now=new Date();const hm=now.toTimeString().slice(0,5);
+  if(hm>=S.settings.reminderTime && S.meta.lastNotifiedDate!==TODAY() && S.meta.lastEntryDate!==TODAY()){
+    S.meta.lastNotifiedDate=TODAY();persist();
+    if("Notification"in window&&Notification.permission==="granted"){
+      new Notification("Пора внести финансы",{body:"За сегодня ещё нет записей. Заполните доходы и расходы."});
+    }else{toast("Напоминание: внесите операции за сегодня");}
+  }
+}
+setInterval(reminderTick,60000);
+
+/* =========================================================
+   СТАРТ
+   ========================================================= */
+
+function normalizeName(v){return String(v||'').toLowerCase().replace(/ё/g,'е').replace(/[^a-zа-я0-9]+/g,' ').trim();}
+function ensureBusinessModel(){
+  let changed=false;
+  S.legalEntities=Array.isArray(S.legalEntities)?S.legalEntities:[];
+  const ensureEntity=(id,name,type,system=false)=>{let x=S.legalEntities.find(e=>e.id===id)||S.legalEntities.find(e=>normalizeName(e.name)===normalizeName(name));if(!x){x={id,name,type,archived:false,system};S.legalEntities.push(x);changed=true;}else{if(!x.type){x.type=type;changed=true;}if(system&&!x.system){x.system=true;changed=true;}}return x;};
+  const ip=ensureEntity('le-ip','ИП','ip'),ooo=ensureEntity('le-ooo','ООО','ooo'),cashEntity=ensureEntity('le-cash','Наличные','cash',true);
+  S.businesses=Array.isArray(S.businesses)?S.businesses:[];
+  const bizDefs=[
+    ['biz-coffee','Кофейня','☕',ip.id,false,false,/коф/],['biz-vending','Вендинг','🥤',ip.id,false,false,/вендинг/],['biz-tolbukhina','Студия Толбухина, 2','🧘',ip.id,false,true,/толбух/],['biz-kuibysheva','Студия Куйбышева, 22','🧘',ooo.id,false,true,/куйбыш/],['biz-masherova','Студия Машерова, 11','🧘',ooo.id,false,true,/машеров/],['biz-ooo-common','Общие расходы ООО','🏢',ooo.id,true,false,/общ.*ооо/]
+  ];
+  const bizMap={};
+  for(const [id,name,emoji,legalEntityId,technical,acceptsCash,rx] of bizDefs){
+    let b=S.businesses.find(x=>x.id===id)||S.businesses.find(x=>rx.test(normalizeName(x.name)));
+    if(!b){b={id,name,emoji,legalEntityId,cashOpening:0,acceptsCash,archived:false,technical};S.businesses.push(b);changed=true;}
+    else{
+      if(!b.legalEntityId){b.legalEntityId=legalEntityId;changed=true;}
+      if(typeof b.archived!=='boolean'){b.archived=false;changed=true;}
+      if(technical&&!b.technical){b.technical=true;changed=true;}
+      if(typeof b.acceptsCash!=='boolean'){b.acceptsCash=acceptsCash;changed=true;}
+      if(typeof b.cashOpening!=='number'){
+        b.cashOpening=acceptsCash?(Number(b.opening)||0):0;changed=true;
+      }
+      if(Number(b.opening)||0){b.opening=0;changed=true;}
+    }
+    bizMap[id]=b.id;
+  }
+  for(const b of S.businesses){
+    if(!b.legalEntityId||b.legalEntityId===cashEntity.id){b.legalEntityId=ip.id;b.needsOwnershipReview=true;changed=true;}
+    if(typeof b.archived!=='boolean'){b.archived=false;changed=true;}
+    if(typeof b.acceptsCash!=='boolean'){b.acceptsCash=/студ/.test(normalizeName(b.name));changed=true;}
+    if(typeof b.cashOpening!=='number'){b.cashOpening=b.acceptsCash?(Number(b.opening)||0):0;changed=true;}
+    if(Number(b.opening)||0){b.opening=0;changed=true;}
+  }
+  S.accounts=Array.isArray(S.accounts)?S.accounts:[];
+  for(const a of S.accounts){if(!a.scope){a.scope='personal';a.legalEntityId=null;a.businessIds=[];changed=true;}if(!Array.isArray(a.businessIds)){a.businessIds=[];changed=true;}if(typeof a.archived!=='boolean'){a.archived=false;changed=true;}if(typeof a.bankName!=='string'){a.bankName='';changed=true;}}
+  if(!(S.accounts||[]).some(a=>a.scope!=="business")){
+    S.accounts.push(
+      {id:"acc-personal-card",name:"Личная карта",bankName:"",emoji:"💳",kind:"card",currency:baseCode(),opening:0,limit:0,archived:false,scope:"personal",legalEntityId:null,businessIds:[]},
+      {id:"acc-personal-cash",name:"Личные наличные",bankName:"",emoji:"💵",kind:"cash",currency:baseCode(),opening:0,limit:0,archived:false,scope:"personal",legalEntityId:null,businessIds:[]}
+    );
+    changed=true;
+  }
+  const accDefs=[
+    ['acc-ip-paritet','ИП · Паритет Банк','Паритет Банк',ip.id,[bizMap['biz-coffee']],/паритет/],
+    ['acc-ip-belarusbank','ИП · Беларусбанк','Беларусбанк',ip.id,[bizMap['biz-vending']],/беларус/],
+    ['acc-ip-alfa','ИП · Альфа-Банк','Альфа-Банк',ip.id,[bizMap['biz-tolbukhina']],/альфа/],
+    ['acc-ooo-alfa','ООО · Альфа-Банк','Альфа-Банк',ooo.id,[bizMap['biz-kuibysheva'],bizMap['biz-masherova'],bizMap['biz-ooo-common']],/альфа/]
+  ];
+  const claimed=new Set();
+  for(const [id,name,bankName,legalEntityId,businessIds,bankRx] of accDefs){
+    let a=S.accounts.find(x=>x.id===id);
+    if(!a){
+      const candidates=S.accounts.filter(x=>!claimed.has(x.id)&&!hasAccountTx(x.id)&&!isCashPoolAccount(x)&&bankRx.test(normalizeName((x.bankName||'')+' '+(x.name||''))));
+      if(bankRx.source==='альфа'){
+        const ownerCue=legalEntityId===ooo.id?/ооо/:/ип/;
+        a=candidates.find(x=>ownerCue.test(normalizeName(x.name)));
+        if(!a&&candidates.length&&(candidates.length>=2||[...claimed].some(v=>v==='acc-ip-alfa'||v==='acc-ooo-alfa')))a=candidates[0];
+      }else a=candidates[0];
+      if(a){a.id=id;changed=true;}
+    }
+    if(!a){a={id,name,bankName,emoji:'🏦',kind:'card',currency:'BYN',opening:0,limit:0,archived:false,scope:'business',legalEntityId,businessIds};S.accounts.push(a);changed=true;}
+    else{
+      claimed.add(a.id);a.scope='business';a.legalEntityId=legalEntityId;a.businessIds=[...new Set([...(a.businessIds||[]),...businessIds])];
+      if(!a.bankName)a.bankName=bankName;if(!a.name||/^(альфа|паритет|беларус)/i.test(a.name))a.name=name;
+    }
+  }
+  const studioIds=[bizMap['biz-tolbukhina'],bizMap['biz-kuibysheva'],bizMap['biz-masherova']].filter(Boolean);
+  let cash=S.accounts.find(a=>a.id==='acc-studios-cash')||S.accounts.find(a=>a.sharedCash)||S.accounts.find(a=>/налич.*студи|общ.*касс/.test(normalizeName((a.name||'')+' '+(a.bankName||''))));
+  if(!cash){cash={id:'acc-studios-cash',name:'Наличные · 3 студии',bankName:'Общая касса',emoji:'💵',kind:'cash',currency:'BYN',opening:0,limit:0,archived:false,scope:'business',legalEntityId:cashEntity.id,businessIds:studioIds,sharedCash:true,system:true};S.accounts.push(cash);changed=true;}
+  else{
+    if(cash.id!=='acc-studios-cash'){cash.id='acc-studios-cash';changed=true;}
+    Object.assign(cash,{scope:'business',legalEntityId:cashEntity.id,kind:'cash',currency:'BYN',limit:0,archived:false,sharedCash:true,system:true});
+    cash.name=cash.name||'Наличные · 3 студии';cash.bankName=cash.bankName||'Общая касса';cash.emoji=cash.emoji||'💵';cash.opening=0;
+    cash.businessIds=[...new Set([...(cash.businessIds||[]),...studioIds])].filter(id=>bizById(id)?.acceptsCash);
+  }
+  for(const t of S.tx||[]){
+    if(!t.biz||!['biz_income','biz_expense','draw','contribution','biz_adjustment'].includes(t.type))continue;
+    const b=bizById(t.biz);if(!b)continue;
+    const linked=t.type==='draw'||t.type==='contribution'?accById(t.businessAccount):accById(t.account);
+    if(!t.paymentMethod){t.paymentMethod=isCashPoolAccount(linked)||(!linked&&b.acceptsCash)?'cash':'bank';changed=true;}
+    if(t.paymentMethod==='cash'&&b.acceptsCash){
+      if(t.type==='draw'||t.type==='contribution'){if(t.businessAccount!==cash.id){t.businessAccount=cash.id;changed=true;}}
+      else if(t.account!==cash.id){t.account=cash.id;changed=true;}
+    }
+    if(t.type==='biz_adjustment'&&t.paymentMethod==='cash'&&t.account!==cash.id){t.account=cash.id;changed=true;}
+  }
+  S.debts=Array.isArray(S.debts)?S.debts:[];
+  for(const d of S.debts){if(!d.currency){d.currency=baseCode();changed=true;}if(!Array.isArray(d.repaid)){d.repaid=[];changed=true;}}
+  S.meta=S.meta||{};if((S.meta.modelVersion||0)<6){S.meta.modelVersion=6;changed=true;}
+  return changed;
+}
+
+let authSubscribed=false; let initRun=0;
+function renderLogin(){
+  S=null;applyTheme();closeModal();
+  const app=document.getElementById("app");
+  app.innerHTML='<div style="min-height:100vh;display:grid;place-items:center;padding:20px">'+
+    '<div class="card pad" style="width:100%;max-width:420px">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px"><div class="brand" style="padding:0"><div class="mark">Br</div><div><b>Финансы</b><small>личный контроль</small></div></div></div>'+
+      '<h1 style="font-size:23px;margin-bottom:5px">Вход</h1>'+
+      '<p class="muted" style="margin:0 0 18px">Введите имя пользователя и пароль.</p>'+
+      '<div class="field"><label>Имя пользователя</label><input class="inp" id="login-username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="admin"></div>'+
+      '<div class="field"><label>Пароль</label><input class="inp" id="login-password" type="password" autocomplete="current-password" placeholder="Пароль"></div>'+
+      '<button class="btn primary" id="login-submit" style="width:100%;justify-content:center">Войти</button>'+
+      '<div class="fs13 muted" id="login-status" style="margin-top:12px;min-height:20px"></div>'+
+    '</div></div>';
+  const username=document.getElementById("login-username");
+  const password=document.getElementById("login-password");
+  const btn=document.getElementById("login-submit");
+  const status=document.getElementById("login-status");
+  const submit=async()=>{
+    const name=username.value.trim().toLowerCase();
+    const pass=password.value;
+    if(!/^[a-z0-9._-]{3,32}$/.test(name)){
+      status.textContent="Имя: 3–32 символа, латинские буквы, цифры, точка, дефис или подчёркивание";
+      username.focus();return;
+    }
+    if(!pass){status.textContent="Введите пароль";password.focus();return;}
+    btn.disabled=true;btn.textContent="Входим…";status.textContent="";
+    try{
+      const {error}=await window.PFBackend.signInWithUsernamePassword(name,pass);
+      if(error)throw error;
+      status.textContent="Вход выполнен";
+    }catch(e){
+      status.textContent="Неверное имя пользователя или пароль";
+      btn.disabled=false;btn.textContent="Войти";
+      password.select();
+    }
+  };
+  btn.addEventListener("click",submit);
+  username.addEventListener("keydown",e=>{if(e.key==="Enter")password.focus();});
+  password.addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
+  username.focus();
+}
+async function init(){
+  const run=++initRun;setupThemeListener();applyTheme();
+  if(window.PFBackendReady)await window.PFBackendReady;
+  if(window.PFBackend){
+    if(!authSubscribed){
+      authSubscribed=true;
+      window.PFBackend.onChange(user=>{if(user)init();else renderLogin();});
+    }
+    if(!window.PFBackend.user){renderLogin();return;}
+  }
+  const saved=await Store.load();
+  if(run!==initRun)return;
+  S=saved||seed();
+  if(ensureBusinessModel())persist();
+  if(ensureUxState())persist();applyTheme();
+  // Однократный переход с прежней RUB-демо-базы: полностью очищаем данные и начинаем в BYN.
+  if(saved&&((S.settings&&S.settings.baseCurrency)!=="BYN"||!(S.currencies||[]).some(c=>c.code==="BYN"))){
+    S=seed();
+    persist();
+  }
+  // миграция: старый единый список categories.biz -> bizIn / bizOut
+  if(S.categories && (!S.categories.bizIn || !S.categories.bizOut)){
+    const old=S.categories.biz||[];
+    S.categories.bizIn=old.filter(c=>/выруч|доход/i.test(c));
+    if(!S.categories.bizIn.length)S.categories.bizIn=["Выручка","Прочий доход бизнеса"];
+    S.categories.bizOut=old.filter(c=>!/выруч|доход/i.test(c));
+    if(!S.categories.bizOut.length)S.categories.bizOut=["ЗП тренерам","ЗП администраторам","Аренда помещения","Закупка товара","Обслуживание аппарата","Реклама","Ремонт / инвентарь","Прочее"];
+    delete S.categories.biz;
+    persist();
+  }
+  // миграция: старая модель без валют/счетов -> добавляем базовую валюту и единый счёт
+  if(!S.currencies){
+    const symb=(S.settings&&S.settings.currency)||"₽";
+    S.currencies=[{code:"RUB",symbol:symb,rate:1}];
+    if(!S.settings)S.settings={};
+    S.settings.baseCurrency="RUB";
+    persist();
+  }
+  if(!S.accounts){
+    S.accounts=[{id:"a0",name:"Основной счёт",bankName:"",kind:"card",currency:baseCode(),opening:(S.settings&&+S.settings.openingPersonal)||0,limit:0,emoji:"💳",scope:"personal",legalEntityId:null,businessIds:[],archived:false}];
+    // привязываем существующие личные операции к основному счёту
+    (S.tx||[]).forEach(t=>{ if(!t.account && (t.type==="in"||t.type==="out"||t.type==="draw"||t.type==="contribution"))t.account="a0"; });
+    persist();
+  }
+  let accountMetaChanged=false;
+  (S.accounts||[]).forEach(a=>{if(typeof a.archived!=="boolean"){a.archived=false;accountMetaChanged=true;}});
+  if(accountMetaChanged)persist();
+  if(ensureUxState())persist();applyTheme();
+  if(!saved)persist();
+  render();
+  if(S.ui.view==="add")setTimeout(refreshAddForm,0);
+  updateRatesFromNBRB().then(ok=>{if(ok&&S){render();if(S.ui.view==="add")setTimeout(refreshAddForm,0);}});
+}
+init();
+</script>
