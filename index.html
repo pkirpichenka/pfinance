@@ -268,6 +268,43 @@ textarea.inp{resize:vertical;min-height:60px}
 .chart-drill{cursor:pointer}
 .chart-drill:hover rect{opacity:1!important}
 
+
+/* ---------- Compact add screen 4.5 ---------- */
+.compact-add-shell{max-width:500px;margin:0 auto}
+.compact-add{padding:4px 15px 16px;overflow:visible}
+.compact-add .compact-seg{display:flex;background:var(--surface-3);border-radius:12px;padding:3px;gap:2px;margin-bottom:12px}
+.compact-add .compact-seg button{flex:1;border:none;background:none;border-radius:9px;padding:8px 4px;font-weight:600;font-size:12px;font-family:var(--disp);color:var(--muted);transition:.16s;position:relative}
+.compact-add .compact-seg button.on{color:#fff;box-shadow:0 1px 3px rgba(20,30,45,.18)}
+.compact-add .compact-seg button.on.t-in{background:var(--personal)}
+.compact-add .compact-seg button.on.t-out{background:var(--liab)}
+.compact-add .compact-seg button.on.t-biz_income{background:var(--biz)}
+.compact-add .compact-seg button.on.t-more{background:var(--ink)}
+.compact-add .compact-amount-input{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}
+.compact-add .compact-sr{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.compact-add .compact-amt-block{text-align:center;padding:7px 0 8px}
+.compact-add .compact-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;font-family:var(--disp);padding:4px 10px;border-radius:20px;margin-bottom:8px}
+.compact-add .compact-badge .dt{width:6px;height:6px;border-radius:2px}
+.compact-add .compact-badge.t-in{background:var(--personal-bg);color:var(--personal)}.compact-add .compact-badge.t-in .dt{background:var(--personal)}
+.compact-add .compact-badge.t-out{background:var(--liab-bg);color:var(--liab)}.compact-add .compact-badge.t-out .dt{background:var(--liab)}
+.compact-add .compact-badge.t-biz{background:var(--biz-bg);color:var(--biz)}.compact-add .compact-badge.t-biz .dt{background:var(--biz)}
+.compact-add .compact-badge.t-asset{background:var(--asset-bg);color:var(--asset)}.compact-add .compact-badge.t-asset .dt{background:var(--asset)}
+.compact-add .compact-badge.t-goal{background:var(--goal-bg);color:var(--goal)}.compact-add .compact-badge.t-goal .dt{background:var(--goal)}
+.compact-add .compact-badge.t-more{background:var(--surface-3);color:var(--ink-2)}.compact-add .compact-badge.t-more .dt{background:var(--muted)}
+.compact-add .compact-amount{font-family:var(--mono);font-weight:600;font-size:38px;line-height:1;letter-spacing:-.03em;transition:color .2s,transform .1s;min-height:42px}
+.compact-add .compact-amount .sgn{font-size:26px;margin-right:2px}.compact-add .compact-amount .cur{font-size:16px;color:var(--muted);margin-left:6px;font-weight:500}
+.compact-add .compact-amount.zero{color:var(--faint)}.compact-add .compact-amount.t-in{color:var(--personal)}.compact-add .compact-amount.t-out{color:var(--liab)}.compact-add .compact-amount.t-biz{color:var(--biz)}.compact-add .compact-amount.t-asset{color:var(--asset)}.compact-add .compact-amount.t-goal{color:var(--goal)}.compact-add .compact-amount.pulse{transform:scale(1.03)}
+.compact-add .compact-preview{margin-top:9px;font-size:12px;color:var(--muted);min-height:17px}.compact-add .compact-preview b{font-family:var(--mono);color:var(--ink-2)}.compact-add .compact-preview .chg{color:var(--liab);font-weight:600}.compact-add .compact-preview .chg.pos{color:var(--personal)}
+.compact-add .compact-details{border-top:1px solid var(--surface-3);padding-top:12px;margin-top:2px}.compact-add .compact-details .field{margin-bottom:10px}.compact-add .compact-details .inp{padding:9px 11px}.compact-add .compact-details .hint{line-height:1.35}
+.compact-add .compact-details #f-explain{margin-bottom:10px;padding:9px 11px!important}
+.compact-add .compact-pre-lbl{font-size:10px;font-family:var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:7px 1px 7px}
+.compact-add .compact-presets{display:flex;gap:7px;overflow-x:auto;padding-bottom:6px;margin:0 -1px;scrollbar-width:none}.compact-add .compact-presets::-webkit-scrollbar{display:none}
+.compact-add .compact-preset{flex:0 0 auto;border:1px solid var(--line-strong);background:var(--surface);border-radius:18px;padding:6px 12px;font-size:12px;font-weight:500;color:var(--ink-2);display:flex;align-items:center;gap:6px;transition:.12s;white-space:nowrap}.compact-add .compact-preset:active{transform:scale(.95);background:var(--surface-2)}.compact-add .compact-preset .d{width:7px;height:7px;border-radius:2px}.compact-add .compact-preset.add{font-size:16px;padding:4px 11px;color:var(--personal)}
+.compact-add .compact-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}.compact-add .compact-key{border:none;background:var(--surface-2);border-radius:12px;padding:12px 0;font-family:var(--mono);font-weight:600;font-size:19px;color:var(--ink);transition:.08s}.compact-add .compact-key:hover{background:var(--surface-3)}.compact-add .compact-key:active{transform:scale(.93);background:var(--line)}
+.compact-add .compact-save{margin-top:11px;width:100%;border:none;border-radius:13px;padding:13px;font-family:var(--disp);font-weight:600;font-size:14.5px;color:#fff;background:var(--ink);transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}.compact-add .compact-save:active{transform:scale(.98)}.compact-add .compact-save.ready.t-in{background:var(--personal)}.compact-add .compact-save.ready.t-out{background:var(--liab)}.compact-add .compact-save.ready.t-biz{background:var(--biz)}.compact-add .compact-save.ready.t-asset{background:var(--asset)}.compact-add .compact-save.ready.t-goal{background:var(--goal)}.compact-add .compact-save:disabled{opacity:.45}
+.compact-add .compact-bal{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:10px 13px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}.compact-add .compact-bal .l{font-size:11.5px;color:var(--muted)}.compact-add .compact-bal .sync{font-size:10.5px;color:var(--personal);margin-top:2px}.compact-add .compact-bal .v{font-family:var(--mono);font-weight:700;font-size:16px;text-align:right;white-space:nowrap}
+.compact-add-more .grp-lbl{font-size:10px;font-family:var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:11px 1px 6px}.compact-add-more .opt{display:flex;align-items:center;gap:10px;padding:10px;border-radius:11px;border:1px solid var(--line);background:var(--surface);margin-bottom:6px;width:100%;text-align:left;color:var(--ink)}.compact-add-more .opt:active{background:var(--surface-2)}.compact-add-more .opt .bar{width:4px;height:24px;border-radius:2px;flex:0 0 auto}.compact-add-more .opt .tt{font-weight:600;font-size:13px;font-family:var(--disp)}.compact-add-more .opt .td{font-size:10.5px;color:var(--muted);margin-top:1px}
+@media (max-width:640px){.compact-add-shell{max-width:none}.compact-add{border:none;box-shadow:none;background:transparent;padding:4px 2px 16px}.compact-add .compact-details .inp{font-size:16px;padding:10px 11px}.compact-add .compact-pad{margin-top:8px}.compact-add .compact-key{padding:11px 0}}
+
 /* ---- Планшет ---- */
 @media (max-width:900px){
   .main{padding:22px 20px 40px}
@@ -1054,42 +1091,112 @@ const TYPE_GROUPS=[
   {id:"transfer",label:"Переводы"},
   {id:"business",label:"Бизнес"},
 ];
-function typePickerHtml(){
-  let first=true;
-  return TYPE_GROUPS.map(g=>
-    '<div class="eyebrow" style="grid-column:1/-1;margin-top:'+(g.id==="personal"?'0':'8px')+'">'+g.label+'</div>'+TYPES.filter(t=>t.group===g.id).map(t=>{
-      const html='<button type="button" class="type-btn '+(first?'on':'')+'" data-act="pick-type" data-t="'+t.id+'"><span class="bar" style="background:'+t.bar+'"></span><span class="tt">'+t.t+'</span><span class="td">'+t.d+'</span></button>';
-      first=false;return html;
-    }).join('')
-  ).join('');
+function compactType(id){return TYPES.find(t=>t.id===id)||TYPES[0];}
+function compactTypeLabel(type){return type==='biz_income'?'Выручка':compactType(type).t;}
+function compactTone(type){
+  if(type==='in')return 'in';if(type==='out'||type==='biz_expense')return 'out';if(type==='biz_income'||type==='draw')return 'biz';
+  if(type==='transfer'||type==='cash_transfer')return 'asset';if(type==='entity_transfer'||type==='personal_biz_expense')return 'goal';return 'more';
 }
-function accountOption(a){return '<option value="'+a.id+'" data-cur="'+a.currency+'">'+a.emoji+' '+esc(a.name)+' · '+a.currency+'</option>';}
-function selectOptions(list,empty){return list.length?list.map(accountOption).join(''):'<option value="">'+empty+'</option>';}
-function viewAdd(){
+function compactQuickTypeHtml(type){
+  return [['in','Доход'],['out','Расход'],['biz_income','Выручка']].map(([id,label])=>'<button type="button" class="t-'+id+(type===id?' on':'')+'" data-act="pick-type" data-t="'+id+'">'+label+'</button>').join('')+
+    '<button type="button" class="t-more '+(!['in','out','biz_income'].includes(type)?'on':'')+'" data-act="open-add-types">Ещё</button>';
+}
+function compactMoreTypesHtml(){
+  const groups=[['Переводы',['transfer','entity_transfer','cash_transfer']],['Бизнес',['draw','contribution','biz_expense','personal_biz_expense']]];
+  return '<div class="compact-add-more">'+groups.map(([label,ids])=>'<div class="grp-lbl">'+label+'</div>'+ids.map(id=>{const t=compactType(id);return '<button type="button" class="opt" data-act="pick-type" data-t="'+id+'"><span class="bar" style="background:'+t.bar+'"></span><div><div class="tt">'+esc(t.t)+'</div><div class="td">'+esc(t.d)+'</div></div></button>';}).join('')).join('')+'</div>';
+}
+function compactNumpadHtml(){return ['1','2','3','4','5','6','7','8','9','.','0','back'].map(k=>'<button type="button" class="compact-key" data-act="amount-key" data-k="'+k+'">'+(k==='back'?'⌫':k)+'</button>').join('');}
+function compactPresetColor(type){return compactType(type).bar||'var(--muted)';}
+function compactPresetHtml(){
   const allowed=new Set(['in','out','biz_income','biz_expense','draw','contribution']);
-  const presets=(S.presets||[]).filter(p=>allowed.has(p.type));
-  const presetHtml=presets.length?presets.map(p=>'<button type="button" class="preset-chip" data-act="use-preset" data-id="'+p.id+'">'+esc(p.label)+'</button>').join(''):'<span class="fs12 muted">Пресетов пока нет — их можно добавить в «Настройках».</span>';
-  return head("Внести операцию","Для бизнеса сначала выберите точку — приложение покажет только связанные с ней счета того же юрлица.")+
-  '<div class="card pad" style="max-width:680px">'+
-    '<div class="field"><label>Тип операции</label><div class="types" id="type-picker">'+typePickerHtml()+'</div></div>'+ 
-    '<input type="hidden" id="f-type" value="in">'+
-    '<div class="field"><label>Частые операции</label><div class="preset-strip">'+presetHtml+'</div></div>'+ 
-    '<div class="row2"><div class="field"><label id="f-amount-lbl">Сумма ('+C()+')</label><input class="inp mono" id="f-amount" type="number" min="0" step="0.01" placeholder="0,00" inputmode="decimal"></div><div class="field"><label>Дата</label><input class="inp" id="f-date" type="date" value="'+TODAY()+'"></div></div>'+ 
-    '<div id="f-biz-wrap" class="field hidden"><label>Точка бизнеса</label><select class="inp" id="f-biz">'+activeBusinesses().map(b=>'<option value="'+b.id+'">'+b.emoji+' '+esc(b.name)+' · '+esc(entityById(b.legalEntityId)?.name||'без юрлица')+'</option>').join('')+'</select></div>'+ 
-    '<div id="f-payment-wrap" class="field hidden"><label>Способ оплаты</label><select class="inp" id="f-payment"><option value="bank">Безналичные</option><option value="cash">Наличные</option></select><div class="hint" id="f-payment-hint"></div></div>'+ 
-    '<div id="f-acc-wrap" class="field"><label id="f-acc-lbl">Личный счёт</label><select class="inp" id="f-acc">'+selectOptions(personalAccounts(),'Нет активных личных счетов')+'</select></div>'+ 
-    '<div id="f-biz-acc-wrap" class="field hidden"><label id="f-biz-acc-lbl">Счёт бизнеса</label><select class="inp" id="f-biz-acc"></select><div class="hint" id="f-biz-acc-hint"></div></div>'+ 
-    '<div id="f-pbe-wrap" class="hidden">'+
-      '<div class="field"><label>Распределить расход между точками</label><div id="f-pbe-list" style="border:1px solid var(--line);border-radius:10px;padding:7px 12px"></div><div style="display:flex;align-items:center;gap:9px;margin-top:9px"><button type="button" class="btn sm" data-act="split-pbe">Распределить поровну</button><span class="fs12 muted" id="f-pbe-summary"></span></div></div>'+ 
-      '<div class="row2"><div class="field"><label>Как учитывать оплату</label><select class="inp" id="f-pbe-settlement"><option value="reimburse">Бизнес должен вернуть мне</option><option value="contribution">Считать взносом собственника</option></select><div class="hint">При возмещении долг создаётся отдельно для каждого юрлица.</div></div><div class="field" id="f-pbe-due-wrap"><label>Срок возмещения</label><input class="inp" id="f-pbe-due" type="date" value="'+daysAhead(30)+'"></div></div>'+ 
+  const rows=(S.presets||[]).filter(p=>allowed.has(p.type)).map(p=>'<button type="button" class="compact-preset" data-act="use-preset" data-id="'+p.id+'"><span class="d" style="background:'+compactPresetColor(p.type)+'"></span>'+esc(p.label)+(p.amount!=null?' · '+esc(p.amount):'')+'</button>').join('');
+  return rows+'<button type="button" class="compact-preset add" data-act="save-current-preset" title="Сохранить текущую форму как пресет" aria-label="Сохранить текущую форму как пресет">＋</button>';
+}
+function compactAmountCode(){
+  const type=mval('f-type');let a=null;
+  if(['transfer','entity_transfer','cash_transfer'].includes(type))a=accById(mval('f-from-acc'));
+  else if(['biz_income','biz_expense'].includes(type))a=accById(mval('f-biz-acc'));
+  else a=accById(mval('f-acc'));
+  return a?.currency||baseCode();
+}
+function compactBalanceContext(){
+  const type=mval('f-type');let account=null;
+  if(['transfer','entity_transfer','cash_transfer'].includes(type))account=accById(mval('f-from-acc'));
+  else if(['biz_income','biz_expense'].includes(type))account=accById(mval('f-biz-acc'));
+  else if(['in','out','draw','contribution','personal_biz_expense'].includes(type))account=accById(mval('f-acc'));
+  return account?{account,balance:accountBalance(account.id)}:{account:null,balance:0};
+}
+function compactAmountParts(){
+  const raw=(mval('f-amount')||'0').replace(',','.');const n=Number(raw)||0;
+  const pieces=raw.split('.'),whole=(pieces[0]||'0').replace(/^0+(?=\d)/,'')||'0';
+  const grouped=whole.replace(/\B(?=(\d{3})+(?!\d))/g,'\u2009')+(pieces.length>1?','+pieces[1]:'');
+  return {raw,n,grouped};
+}
+function compactPreviewHtml(type,n,code){
+  const money=fmt(n,false,code),complex=['transfer','entity_transfer','cash_transfer','personal_biz_expense'].includes(type);
+  if(complex)return n>0?'Детали перемещения и распределения — ниже':compactType(type).d;
+  let a=null,dir=0;
+  if(type==='in'){a=accById(mval('f-acc'));dir=1;}else if(type==='out'){a=accById(mval('f-acc'));dir=-1;}
+  else if(type==='draw'){a=accById(mval('f-acc'));dir=1;}else if(type==='contribution'){a=accById(mval('f-acc'));dir=-1;}
+  else if(type==='biz_income'){a=accById(mval('f-biz-acc'));dir=1;}else if(type==='biz_expense'){a=accById(mval('f-biz-acc'));dir=-1;}
+  if(!n)return compactType(type).d;
+  if(!a)return 'Выберите счёт в деталях ниже';
+  return '<b>'+esc(a.name)+'</b> <b class="chg '+(dir>0?'pos':'')+'">'+(dir>0?'+':'−')+money+'</b>';
+}
+function updateCompactAddChrome(updateBalance=true){
+  const amountEl=document.getElementById('f-amount'),display=document.getElementById('compact-amount');if(!amountEl||!display)return;
+  const type=mval('f-type')||'in',t=compactType(type),tone=compactTone(type),{n,grouped}=compactAmountParts(),code=compactAmountCode();
+  S.meta=S.meta||{};S.meta.addType=type;
+  const seg=document.getElementById('compact-type-seg');if(seg)seg.innerHTML=compactQuickTypeHtml(type);
+  const badge=document.getElementById('compact-badge');if(badge){badge.className='compact-badge t-'+tone;badge.innerHTML='<span class="dt"></span><span>'+esc(compactTypeLabel(type))+'</span>';}
+  let sign='';if(n>0){if(['in','biz_income','draw'].includes(type))sign='<span class="sgn">+</span>';else if(['out','biz_expense','contribution','personal_biz_expense'].includes(type))sign='<span class="sgn">−</span>';}
+  display.className='compact-amount '+(n===0?'zero':'t-'+tone);display.innerHTML=sign+grouped+'<span class="cur">'+esc(sym(code)||code)+'</span>';
+  const preview=document.getElementById('compact-preview');if(preview)preview.innerHTML=compactPreviewHtml(type,n,code);
+  const save=document.getElementById('compact-save');if(save){save.disabled=n<=0;save.className='compact-save '+(n>0?'ready t-'+tone:'');save.textContent=n>0?'Сохранить · '+compactTypeLabel(type):'Сохранить операцию';}
+  if(updateBalance){const ctx=compactBalanceContext(),lbl=document.getElementById('compact-bal-label'),val=document.getElementById('compact-bal-value');if(lbl)lbl.textContent=ctx.account?ctx.account.name+' · остаток':'Счёт не выбран';if(val)val.textContent=ctx.account?fmt(ctx.balance,false,ctx.account.currency):'—';}
+}
+function compactPressAmount(key){
+  const input=document.getElementById('f-amount');if(!input)return;haptic(6);let v=(input.value||'0').replace(',','.');
+  if(key==='back'){v=v.length>1?v.slice(0,-1):'0';if(!v||v==='-')v='0';}
+  else if(key==='.'){if(!v.includes('.'))v=(v==='0'?'0.':v+'.');}
+  else if(/^\d$/.test(key)){if(v.includes('.')&&v.split('.')[1].length>=2)return;v=v==='0'?key:v+key;if(v.replace('.','').length>12)return;}
+  input.value=v;input.dispatchEvent(new Event('input',{bubbles:true}));updateCompactAddChrome();
+}
+function pulseCompactAmount(){const el=document.getElementById('compact-amount');if(!el)return;el.classList.add('pulse');setTimeout(()=>el.classList.remove('pulse'),130);}
+function animateCompactBalance(from,to,account){
+  const el=document.getElementById('compact-bal-value');if(!el||!account)return;const reduce=window.matchMedia?.('(prefers-reduced-motion:reduce)').matches;
+  if(reduce){el.textContent=fmt(to,false,account.currency);return;}const dur=420,t0=performance.now();
+  (function step(now){const p=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-p,3);el.textContent=fmt(from+(to-from)*e,false,account.currency);if(p<1)requestAnimationFrame(step);})(t0);
+}
+function viewAdd(){
+  const savedType=S.meta?.addType||S.meta?.addDraft?.type||'in',initialType=TYPES.some(t=>t.id===savedType)?savedType:'in';
+  setTimeout(()=>{if(S?.ui?.view==='add'&&document.getElementById('f-type'))refreshAddForm();},0);
+  return '<div class="compact-add-shell"><div class="card compact-add">'+
+    '<input type="hidden" id="f-type" value="'+initialType+'">'+
+    '<div class="compact-seg" id="compact-type-seg">'+compactQuickTypeHtml(initialType)+'</div>'+
+    '<div class="compact-amt-block"><span class="compact-badge t-'+compactTone(initialType)+'" id="compact-badge"><span class="dt"></span><span>'+esc(compactTypeLabel(initialType))+'</span></span>'+
+      '<label class="compact-sr" id="f-amount-lbl" for="f-amount">Сумма ('+C()+')</label><input class="compact-amount-input mono" id="f-amount" type="text" inputmode="decimal" value="0" autocomplete="off">'+
+      '<div class="compact-amount zero" id="compact-amount">0<span class="cur">'+esc(C())+'</span></div><div class="compact-preview" id="compact-preview">'+esc(compactType(initialType).d)+'</div></div>'+
+    '<div class="compact-details">'+
+      '<div id="f-biz-wrap" class="field hidden"><label>Точка бизнеса</label><select class="inp" id="f-biz">'+activeBusinesses().map(b=>'<option value="'+b.id+'">'+b.emoji+' '+esc(b.name)+' · '+esc(entityById(b.legalEntityId)?.name||'без юрлица')+'</option>').join('')+'</select></div>'+ 
+      '<div id="f-payment-wrap" class="field hidden"><label>Способ оплаты</label><select class="inp" id="f-payment"><option value="bank">Безналичные</option><option value="cash">Наличные</option></select><div class="hint" id="f-payment-hint"></div></div>'+ 
+      '<div id="f-acc-wrap" class="field"><label id="f-acc-lbl">Личный счёт</label><select class="inp" id="f-acc">'+selectOptions(personalAccounts(),'Нет активных личных счетов')+'</select></div>'+ 
+      '<div id="f-biz-acc-wrap" class="field hidden"><label id="f-biz-acc-lbl">Счёт бизнеса</label><select class="inp" id="f-biz-acc"></select><div class="hint" id="f-biz-acc-hint"></div></div>'+ 
+      '<div id="f-pbe-wrap" class="hidden">'+
+        '<div class="field"><label>Распределить расход между точками</label><div id="f-pbe-list" style="border:1px solid var(--line);border-radius:10px;padding:7px 12px"></div><div style="display:flex;align-items:center;gap:9px;margin-top:9px;flex-wrap:wrap"><button type="button" class="btn sm" data-act="split-pbe">Распределить поровну</button><span class="fs12 muted" id="f-pbe-summary"></span></div></div>'+ 
+        '<div class="row2"><div class="field"><label>Как учитывать оплату</label><select class="inp" id="f-pbe-settlement"><option value="reimburse">Бизнес должен вернуть мне</option><option value="contribution">Считать взносом собственника</option></select><div class="hint">При возмещении долг создаётся отдельно для каждого юрлица.</div></div><div class="field" id="f-pbe-due-wrap"><label>Срок возмещения</label><input class="inp" id="f-pbe-due" type="date" value="'+daysAhead(30)+'"></div></div>'+ 
+      '</div>'+ 
+      '<div id="f-transfer-wrap" class="row2 hidden"><div class="field"><label>Со счёта</label><select class="inp" id="f-from-acc">'+selectOptions(activeAccounts(),'Нет активных счетов')+'</select></div><div class="field"><label>На счёт</label><select class="inp" id="f-to-acc">'+selectOptions(activeAccounts(),'Нет активных счетов')+'</select></div></div>'+ 
+      '<div id="f-transfer-result" class="field hidden" style="background:var(--asset-bg);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--ink-2)"></div>'+ 
+      '<div class="row2"><div class="field" id="f-cat-wrap"><label>Категория</label><select class="inp" id="f-cat"></select></div><div class="field"><label>Дата</label><input class="inp" id="f-date" type="date" value="'+TODAY()+'"></div></div>'+ 
+      '<div class="field"><label>Комментарий <span class="muted">(необязательно)</span></label><input class="inp" id="f-note" placeholder="Например: выручка за смену"></div>'+ 
+      '<div id="f-explain" class="field" style="background:var(--surface-2);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--ink-2)"></div>'+ 
     '</div>'+ 
-    '<div id="f-transfer-wrap" class="row2 hidden"><div class="field"><label>Со счёта</label><select class="inp" id="f-from-acc">'+selectOptions(activeAccounts(),'Нет активных счетов')+'</select></div><div class="field"><label>На счёт</label><select class="inp" id="f-to-acc">'+selectOptions(activeAccounts(),'Нет активных счетов')+'</select></div></div>'+ 
-    '<div id="f-transfer-result" class="field hidden" style="background:var(--asset-bg);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--ink-2)"></div>'+ 
-    '<div class="field" id="f-cat-wrap"><label>Категория</label><select class="inp" id="f-cat"></select></div>'+ 
-    '<div class="field"><label>Комментарий <span class="muted">(необязательно)</span></label><input class="inp" id="f-note" placeholder="Например: выручка за смену"></div>'+ 
-    '<div id="f-explain" class="field" style="background:var(--surface-2);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--ink-2)"></div>'+ 
-    '<div style="display:flex;gap:10px;margin-top:4px"><button class="btn primary" data-act="save-tx">'+svg(I.add)+'Сохранить операцию</button><button class="btn" data-act="nav" data-v="tx">К списку операций</button></div>'+ 
-  '</div>';
+    '<div class="compact-pre-lbl">Частые операции — один тап</div><div class="compact-presets" id="compact-presets">'+compactPresetHtml()+'</div>'+ 
+    '<div class="compact-pad" id="compact-pad">'+compactNumpadHtml()+'</div>'+ 
+    '<button type="button" class="compact-save" id="compact-save" data-act="save-tx" disabled>Сохранить операцию</button>'+ 
+    '<div class="compact-bal"><div><div class="l" id="compact-bal-label">Счёт не выбран</div><div class="sync">✓ синхронизировано</div></div><div class="v mono" id="compact-bal-value">—</div></div>'+ 
+  '</div></div>';
 }
 function selectedPaymentMethod(){
   const b=bizById(mval('f-biz'));
@@ -1181,7 +1288,7 @@ function applyPreset(id){
 }
 function refreshAddForm(skipLastUsed=false){
   const prior=addFormSnapshot();
-  const type=document.getElementById('f-type').value;
+  const type=document.getElementById('f-type').value;S.meta=S.meta||{};S.meta.addType=type;
   const last=skipLastUsed?{}:(S.meta?.lastUsed?.[type]||{});
   const desired=(id,key)=>addFormTouched.has(id)?prior[id]:(last[key]||'');
   const isTransfer=type==='transfer',isEntityTransfer=type==='entity_transfer',isCashTransfer=type==='cash_transfer',isPbe=type==='personal_biz_expense';
@@ -1224,7 +1331,7 @@ function refreshAddForm(skipLastUsed=false){
     biz_expense:method==='cash'?'Расход уменьшит наличные выбранной студии и общую кассу.':'Расход уменьшит банковский счёт соответствующего юрлица и безналичный остаток точки.',
     personal_biz_expense:'Личная карта уменьшится на общую сумму. Расход попадёт в прибыль выбранных точек, но их банковские счета и касса не изменятся. При выборе возмещения приложение создаст долги ИП и ООО перед вами.'};
   document.getElementById('f-explain').textContent=ex[type]||'';
-  updateAmountCurrencyLabel();if(isAccountMove)updateTransferPreview();
+  updateAmountCurrencyLabel();if(isAccountMove)updateTransferPreview();updateCompactAddChrome();
 }
 function ensureTransferAccounts(){const from=document.getElementById('f-from-acc'),to=document.getElementById('f-to-acc');if(!from||!to)return;if(from.value===to.value&&to.options.length>1)to.selectedIndex=from.selectedIndex===0?1:0;}
 function sameAccountOwner(a,b){if(!a||!b||isCashPoolAccount(a)||isCashPoolAccount(b))return false;if(isPersonalAccount(a)&&isPersonalAccount(b))return true;return isBankBusinessAccount(a)&&isBankBusinessAccount(b)&&a.legalEntityId&&a.legalEntityId===b.legalEntityId;}
@@ -1720,10 +1827,15 @@ document.addEventListener("click",e=>{
 
   // add form
   if(act==="pick-type"){
-    haptic(8);resetAddFormSession();document.querySelectorAll("#type-picker .type-btn").forEach(b=>b.classList.remove("on"));
-    el.classList.add("on");document.getElementById("f-type").value=el.dataset.t;refreshAddForm();captureAddDraft();return;
+    haptic(8);resetAddFormSession();closeModal();document.getElementById("f-type").value=el.dataset.t;S.meta=S.meta||{};S.meta.addType=el.dataset.t;refreshAddForm();captureAddDraft();persist();return;
   }
-  if(act==="use-preset"){applyPreset(el.dataset.id);return;}
+  if(act==="open-add-types"){haptic(8);openSheet("Все типы операций",compactMoreTypesHtml());return;}
+  if(act==="amount-key"){compactPressAmount(el.dataset.k);return;}
+  if(act==="use-preset"){applyPreset(el.dataset.id);setTimeout(updateCompactAddChrome,0);return;}
+  if(act==="save-current-preset"){
+    const d=captureAddDraft();if(!d){toast("Для этого типа пресеты не поддерживаются");return;}
+    openModal("Новый пресет",'<div class="field"><label>Название</label><input class="inp" id="preset-label" placeholder="Например: Выручка за смену"></div>',()=>{const label=mval("preset-label").trim();if(!label){toast("Введите название");return false;}S.presets.push({id:uid(),label,...d});persist();closeModal();const strip=document.getElementById("compact-presets");if(strip)strip.innerHTML=compactPresetHtml();toast("Пресет сохранён");});return;
+  }
   if(act==="save-tx"){saveTx();return;}
   if(act==="split-pbe"){document.querySelectorAll(".pbe-amount").forEach(x=>delete x.dataset.manual);distributePbe();return;}
 
@@ -1835,13 +1947,19 @@ document.addEventListener("click",e=>{
   if(e.target.id==="modal-save"){const root=document.getElementById("modal-root");const fn=root._onSave;if(fn){const r=fn();if(r!==false)closeModal();}}
 });
 
-function completeSavedTx(t,message){
-  rememberLastUsed(t.type);captureAddDraft();S.meta.lastEntryDate=TODAY();persist();haptic(18);S.ui.view="tx";render();
-  const debtIds=[...(t.debtIds||[])];showUndo(message,()=>{S.tx=S.tx.filter(x=>x.id!==t.id);if(debtIds.length)S.debts=S.debts.filter(d=>!debtIds.includes(d.id));persist();});
+function completeSavedTx(t,message,saveCtx){
+  rememberLastUsed(t.type);S.meta=S.meta||{};S.meta.addType=t.type;S.meta.lastEntryDate=TODAY();
+  const amountInput=document.getElementById('f-amount');if(amountInput)amountInput.value='0';
+  const draft=currentPresetDraft();if(draft)S.meta.addDraft=draft;
+  const debtIds=[...(t.debtIds||[])],after=saveCtx?.account?accountBalance(saveCtx.account.id):null;
+  persist();if(t.type==='personal_biz_expense')distributePbe();updateCompactAddChrome(false);
+  if(saveCtx?.account&&after!=null)animateCompactBalance(saveCtx.balance,after,saveCtx.account);else updateCompactAddChrome();
+  showUndo(message,()=>{S.tx=S.tx.filter(x=>x.id!==t.id);if(debtIds.length)S.debts=S.debts.filter(d=>!debtIds.includes(d.id));persist();});
 }
 function saveTx(){
   const type=document.getElementById("f-type").value,amount=+mval("f-amount");
   if(!amount||amount<=0){toast("Введите сумму больше нуля");return;}
+  const saveCtx=compactBalanceContext();
   const date=mval("f-date")||TODAY(),note=mval("f-note").trim();
   if(type==="transfer"||type==="entity_transfer"||type==="cash_transfer"){
     const {from,to,toAmount}=transferAmounts();
@@ -1855,7 +1973,7 @@ function saveTx(){
       if(!valid||isCashPoolAccount(from)===isCashPoolAccount(to)){toast("Выберите общую кассу и банковский счёт выбранной студии");return;}
     }
     const t={id:uid(),type,biz:biz?.id,fromAccount:from.id,toAccount:to.id,amount,toAmount,cat:type==="transfer"?"Перевод между счетами":type==="cash_transfer"?"Инкассация":mval("f-cat"),date,note,rateFrom:rate(from.currency),rateTo:rate(to.currency)};
-    S.tx.push(t);completeSavedTx(t,"Перемещение сохранено · "+fmt(amount,false,from.currency));return;
+    haptic(16);pulseCompactAmount();S.tx.push(t);completeSavedTx(t,"Перемещение сохранено · "+fmt(amount,false,from.currency),saveCtx);return;
   }
   if(type==="personal_biz_expense"){
     const pa=accById(mval("f-acc"));if(!pa||pa.archived||!isPersonalAccount(pa)){toast("Добавьте и выберите личный счёт");return;}
@@ -1869,7 +1987,7 @@ function saveTx(){
       for(const [legalEntityId,sum] of Object.entries(byEntity)){const entity=entityById(legalEntityId),did=uid();debtIds.push(did);S.debts.push({id:did,dir:"in",who:(entity?.name||"Бизнес")+" · возмещение личных расходов",amount:sum,currency:pa.currency,date,due:mval("f-pbe-due"),note:"Личная оплата: "+(mval("f-cat")||"Расход бизнеса")+(note?" · "+note:""),repaid:[],kind:"owner_reimbursement",legalEntityId,sourceTxId:id});}
       t.debtIds=debtIds;
     }
-    S.tx.push(t);completeSavedTx(t,"Личная оплата распределена · "+fmt(amount,false,pa.currency));return;
+    haptic(16);pulseCompactAmount();S.tx.push(t);completeSavedTx(t,"Личная оплата распределена · "+fmt(amount,false,pa.currency),saveCtx);return;
   }
   const t={id:uid(),type,amount,cat:mval("f-cat"),date,note};
   if(["draw","contribution","biz_income","biz_expense"].includes(type)){
@@ -1886,7 +2004,7 @@ function saveTx(){
   }else if(type==="in"||type==="out"){
     const pa=accById(mval("f-acc"));if(!pa||pa.archived||!isPersonalAccount(pa)){toast("Добавьте и выберите личный счёт");return;}t.account=pa.id;
   }
-  S.tx.push(t);completeSavedTx(t,"Операция сохранена · "+fmt(amount,false,accById(t.account)?.currency||baseCode()));
+  haptic(16);pulseCompactAmount();S.tx.push(t);completeSavedTx(t,"Операция сохранена · "+fmt(amount,false,accById(t.account)?.currency||baseCode()),saveCtx);
 }
 
 function downloadJSON(){
@@ -1934,6 +2052,16 @@ document.addEventListener("input",e=>{
   if(e.target.id==="r-amt"&&window.__currentRepayDebt)updateRepayMoveForm(window.__currentRepayDebt,false);
   if(e.target.id==="r-account-amount")e.target.dataset.manual='1';
   if(e.target.id&&e.target.id.startsWith("f-"))captureAddDraft();
+  if(e.target.id==="f-amount")updateCompactAddChrome();
+});
+
+document.addEventListener("keydown",e=>{
+  if(!S||S.ui.view!=="add"||!document.getElementById("f-amount")||document.getElementById("modal-root")?.innerHTML)return;
+  const tag=(e.target?.tagName||"").toLowerCase();if(["input","select","textarea"].includes(tag))return;
+  if(/^[0-9]$/.test(e.key)){e.preventDefault();compactPressAmount(e.key);}
+  else if(e.key==="."||e.key===","){e.preventDefault();compactPressAmount(".");}
+  else if(e.key==="Backspace"){e.preventDefault();compactPressAmount("back");}
+  else if(e.key==="Enter"){e.preventDefault();saveTx();}
 });
 
 /* =========================================================
