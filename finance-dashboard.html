@@ -803,6 +803,10 @@ function debtRemaining(d){return (Number(d.amount)||0)-(d.repaid||[]).reduce((s,
 function debtBaseRemaining(d){return toBase(Math.max(0,debtRemaining(d)),debtCurrency(d));}
 function owedToMe(){return S.debts.filter(d=>d.dir==="in").reduce((s,d)=>s+debtBaseRemaining(d),0);}
 function iOwe(){return S.debts.filter(d=>d.dir==="out").reduce((s,d)=>s+debtBaseRemaining(d),0);}
+function isExternalDebt(d){return d?.kind!=="owner_reimbursement";}
+function externalOwedToMe(){return S.debts.filter(d=>d.dir==="in"&&isExternalDebt(d)).reduce((s,d)=>s+debtBaseRemaining(d),0);}
+function externalIOwe(){return S.debts.filter(d=>d.dir==="out"&&isExternalDebt(d)).reduce((s,d)=>s+debtBaseRemaining(d),0);}
+function netWorth(){return personalBalance()+bizTotalBalance()+externalOwedToMe()-externalIOwe();}
 function personalBizExpenseForBiz(id){
   return (S.tx||[]).filter(t=>t.type==="personal_biz_expense").reduce((sum,t)=>{
     const a=(t.allocations||[]).find(x=>x.biz===id),acc=accById(t.account);
@@ -1012,6 +1016,7 @@ function viewOverview(){
       '</div>';}).join("")||'<div class="fs13 muted" style="padding:6px 0">Активных счетов пока нет.</div>')+
     '</div></div>'+ 
   '<div class="stats" style="margin-bottom:16px">'+
+    statCard("Чистый капитал",fmt(netWorth()),"деньги + внешние долги − обязательства","i-goal",I.overview)+
     statCard("Реальный доход "+periodText,fmt(realIncomePeriod(period),true),"личный доход + чистый вывод","i-in",I.in,'data-act="open-tx-filter" data-filter="in"')+
     statCard("Расходы "+periodText,fmt(a.expense),"только личные траты","i-out",I.out,'data-act="open-tx-filter" data-filter="out"')+
     statCard("Мне должны",fmt(owedToMe()),S.debts.filter(d=>d.dir==="in"&&debtRemaining(d)>0).length+" активных долга","i-asset",I.debt,'data-act="nav" data-v="debts"')+
