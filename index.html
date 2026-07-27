@@ -262,6 +262,10 @@ textarea.inp{resize:vertical;min-height:60px}
 .kpi-line{display:flex;justify-content:space-between;padding:7px 0;font-size:13px;border-bottom:1px dashed var(--surface-3)}
 .kpi-line:last-child{border-bottom:none}
 .kpi-line b{font-family:var(--mono)}
+.personal-net-worth{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 14px;padding:8px 10px;border-radius:10px;background:var(--personal-bg);color:var(--personal)}
+.personal-net-worth .k{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.personal-net-worth .v{font-family:var(--mono);font-size:14px;font-weight:700;white-space:nowrap}
+.personal-net-worth.neg{background:var(--liab-bg);color:var(--liab)}
 .clickable{cursor:pointer;transition:transform .12s,border-color .12s,background .12s}
 .clickable:hover{border-color:var(--line-strong);transform:translateY(-1px)}
 .preset-strip{display:flex;gap:8px;overflow-x:auto;padding:2px 1px 7px;scrollbar-width:thin}
@@ -322,10 +326,12 @@ textarea.inp{resize:vertical;min-height:60px}
 
 /* ---- Телефон ---- */
 @media (max-width:640px){
+  html,body{height:100%;overflow:hidden}
   body{font-size:15px}
-  .app{grid-template-columns:1fr}
+  #app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+  .app{grid-template-columns:1fr;min-height:0;flex:1;overflow:hidden}
   .nav{display:none}
-  .main{padding:14px 13px 96px;width:100%;max-width:100%;min-width:0;overflow-x:hidden} /* место под нижнюю навигацию */
+  .main{height:100%;padding:14px 13px 20px;width:100%;max-width:100%;min-width:0;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain} /* прокручивается только контент; нижняя строка остаётся в каркасе */
   .overview-period{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;margin:0 0 14px;padding-bottom:2px;scrollbar-width:none}
   .overview-period::-webkit-scrollbar{display:none}
   .overview-period .eyebrow{flex:0 0 auto}
@@ -333,7 +339,7 @@ textarea.inp{resize:vertical;min-height:60px}
 
   /* верхняя шапка */
   .mobile-top{
-    display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:30;
+    display:flex;align-items:center;gap:10px;position:relative;top:auto;z-index:30;flex:0 0 auto;
     background:var(--surface);border-bottom:1px solid var(--line);
     padding:11px 15px;padding-top:calc(11px + env(safe-area-inset-top))
   }
@@ -346,7 +352,7 @@ textarea.inp{resize:vertical;min-height:60px}
 
   /* нижняя навигация */
   .bottom-nav{
-    display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;
+    display:flex;position:relative;left:auto;right:auto;bottom:auto;z-index:40;flex:0 0 auto;width:100%;
     background:var(--surface);border-top:1px solid var(--line);
     padding:6px 6px calc(6px + env(safe-area-inset-bottom));
     justify-content:space-around;align-items:flex-end;
@@ -806,7 +812,7 @@ function iOwe(){return S.debts.filter(d=>d.dir==="out").reduce((s,d)=>s+debtBase
 function isExternalDebt(d){return d?.kind!=="owner_reimbursement";}
 function externalOwedToMe(){return S.debts.filter(d=>d.dir==="in"&&isExternalDebt(d)).reduce((s,d)=>s+debtBaseRemaining(d),0);}
 function externalIOwe(){return S.debts.filter(d=>d.dir==="out"&&isExternalDebt(d)).reduce((s,d)=>s+debtBaseRemaining(d),0);}
-function netWorth(){return personalBalance()+bizTotalBalance()+externalOwedToMe()-externalIOwe();}
+function netWorth(){return personalBalance()+owedToMe()-iOwe();}
 function personalBizExpenseForBiz(id){
   return (S.tx||[]).filter(t=>t.type==="personal_biz_expense").reduce((sum,t)=>{
     const a=(t.allocations||[]).find(x=>x.biz===id),acc=accById(t.account);
@@ -943,6 +949,7 @@ function render(){
   else if(v==="forecast")m.innerHTML=viewForecast();
   else if(v==="goals")m.innerHTML=viewGoals();
   else if(v==="settings")m.innerHTML=viewSettings();
+  m.scrollTop=0;
   window.scrollTo(0,0);
 }
 
@@ -991,6 +998,7 @@ function viewOverview(){
       '<div class="lbl"><span class="tag"></span>Ваши личные деньги</div>'+ 
       '<div class="hint">Сумма только по личным счетам, без расчётных счетов ИП и ООО.</div>'+ 
       '<div class="amt">'+fmt(pb)+'</div>'+ 
+      '<div class="personal-net-worth '+(netWorth()<0?'neg':'')+'"><span class="k">ЧИСТЫЙ КАПИТАЛ</span><span class="v">'+fmt(netWorth())+'</span></div>'+ 
       '<div class="sub"><div><span class="k">ДОСТУПНО С ЛИМИТАМИ</span><span class="v">'+fmt(totalAvailable())+'</span></div>'+ 
       '<div><span class="k">ДОХОД / '+periodShort+'</span><span class="v pos">'+fmt(a.income,true)+'</span></div>'+ 
       '<div><span class="k">РАСХОДЫ / '+periodShort+'</span><span class="v neg">'+fmt(a.expense)+'</span></div>'+ 
@@ -1016,7 +1024,6 @@ function viewOverview(){
       '</div>';}).join("")||'<div class="fs13 muted" style="padding:6px 0">Активных счетов пока нет.</div>')+
     '</div></div>'+ 
   '<div class="stats" style="margin-bottom:16px">'+
-    statCard("Чистый капитал",fmt(netWorth()),"деньги + внешние долги − обязательства","i-goal",I.overview)+
     statCard("Реальный доход "+periodText,fmt(realIncomePeriod(period),true),"личный доход + чистый вывод","i-in",I.in,'data-act="open-tx-filter" data-filter="in"')+
     statCard("Расходы "+periodText,fmt(a.expense),"только личные траты","i-out",I.out,'data-act="open-tx-filter" data-filter="out"')+
     statCard("Мне должны",fmt(owedToMe()),S.debts.filter(d=>d.dir==="in"&&debtRemaining(d)>0).length+" активных долга","i-asset",I.debt,'data-act="nav" data-v="debts"')+
