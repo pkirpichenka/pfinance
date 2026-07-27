@@ -1097,6 +1097,8 @@ const TYPE_GROUPS=[
   {id:"transfer",label:"Переводы"},
   {id:"business",label:"Бизнес"},
 ];
+function accountOption(a){return '<option value="'+a.id+'" data-cur="'+a.currency+'">'+a.emoji+' '+esc(a.name)+' · '+a.currency+'</option>';}
+function selectOptions(list,empty){return list.length?list.map(accountOption).join(''):'<option value="">'+esc(empty)+'</option>';}
 function compactType(id){return TYPES.find(t=>t.id===id)||TYPES[0];}
 function compactTypeLabel(type){return type==='biz_income'?'Выручка':compactType(type).t;}
 function compactTone(type){
