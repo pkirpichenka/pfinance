@@ -21,7 +21,7 @@
   --radius:15px; --radius-s:10px;
   --shadow:0 1px 2px rgba(20,30,45,.04),0 8px 24px -12px rgba(20,30,45,.14);
   --shadow-s:0 1px 2px rgba(20,30,45,.06);
-  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --mono:'Inter',system-ui,sans-serif;
   --disp:'Space Grotesk',system-ui,sans-serif;
   --body:'Inter',system-ui,sans-serif;
 }
@@ -52,6 +52,7 @@ body{
 button{font-family:inherit;cursor:pointer}
 input,select,textarea{font-family:inherit;font-size:14.5px}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.amt,.num,.stat .val,.side .sub .v,.personal-net-worth .v,.compact-amount,.compact-balance-value{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
 h1,h2,h3,h4{font-family:var(--disp);margin:0;font-weight:600;letter-spacing:-.01em}
 
 /* ---------- Layout ---------- */
@@ -87,7 +88,7 @@ h1,h2,h3,h4{font-family:var(--disp);margin:0;font-weight:600;letter-spacing:-.01
 .main{padding:26px 30px 60px;max-width:1180px;width:100%;min-width:0}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
 .page-head .t h1{font-size:23px}
-.page-head .t p{margin:3px 0 0;color:var(--muted);font-size:13.5px}
+.page-head .t p{display:none}
 
 /* ---------- Buttons ---------- */
 .btn{
@@ -134,8 +135,8 @@ h1,h2,h3,h4{font-family:var(--disp);margin:0;font-weight:600;letter-spacing:-.01
 .side .lbl{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;font-family:var(--disp)}
 .side .lbl .tag{width:8px;height:8px;border-radius:2px}
 .personal .tag{background:var(--personal)}.biz .tag{background:var(--biz)}
-.side .hint{color:var(--muted);font-size:11.5px;margin:2px 0 14px;max-width:32ch}
-.side .amt{font-family:var(--mono);font-weight:700;font-size:32px;letter-spacing:-.03em;line-height:1}
+.side .hint{display:none}
+.side .amt{font-family:var(--mono);font-weight:700;font-size:34px;letter-spacing:-.03em;line-height:1}
 .personal .amt{color:var(--personal)}.biz .amt{color:var(--biz)}
 .side .sub{margin-top:12px;display:flex;gap:18px;flex-wrap:wrap}
 .side .sub .k{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.03em}
@@ -148,8 +149,8 @@ h1,h2,h3,h4{font-family:var(--disp);margin:0;font-weight:600;letter-spacing:-.01
 .stat .name{font-size:12px;color:var(--muted);font-weight:500}
 .stat .ico{width:26px;height:26px;border-radius:8px;display:grid;place-items:center}
 .stat .ico svg{width:15px;height:15px}
-.stat .val{font-family:var(--mono);font-weight:700;font-size:22px;letter-spacing:-.02em;margin-top:9px}
-.stat .foot{font-size:11.5px;color:var(--muted);margin-top:3px}
+.stat .val{font-family:var(--mono);font-weight:700;font-size:24px;letter-spacing:-.03em;margin-top:10px}
+.stat .foot{display:none}
 .i-in{background:var(--personal-bg);color:var(--personal)}
 .i-out{background:var(--liab-bg);color:var(--liab)}
 .i-asset{background:var(--asset-bg);color:var(--asset)}
@@ -656,7 +657,8 @@ function fmt(n,sign,code){
   const v=Math.round((Number(n)||0)*100)/100;
   const s=new Intl.NumberFormat("ru-RU",{minimumFractionDigits:2,maximumFractionDigits:2}).format(Math.abs(v));
   const pre=(sign&&v>0)?"+":(v<0?"−":"");
-  return pre+s+" "+sym(code);
+  const label=(code==="BYN")?"BYN":sym(code);
+  return pre+s+" "+label;
 }
 /* --- Счета --- */
 function accById(id){return (S.accounts||[]).find(a=>a.id===id);}
@@ -932,7 +934,7 @@ function render(){
       nav+
       '<div class="nav-sep"></div>'+
       '<button class="nav-item" data-act="nav" data-v="add">'+svg(I.add)+'<span>Быстрая запись</span></button>'+
-      '<div class="nav-foot">Данные защищены Supabase RLS и сохраняются в вашем облачном профиле.</div>'+
+      ''+
     '</aside>'+
     '<main class="main" id="main"></main>'+
   '</div>'+
@@ -996,7 +998,7 @@ function viewOverview(){
   '<div class="split" style="margin-bottom:16px">'+
     '<div class="side personal">'+
       '<div class="lbl"><span class="tag"></span>Ваши личные деньги</div>'+ 
-      '<div class="hint">Сумма только по личным счетам, без расчётных счетов ИП и ООО.</div>'+ 
+      ''+ 
       '<div class="amt">'+fmt(pb)+'</div>'+ 
       '<div class="personal-net-worth '+(netWorth()<0?'neg':'')+'"><span class="k">ЧИСТЫЙ КАПИТАЛ</span><span class="v">'+fmt(netWorth())+'</span></div>'+ 
       '<div class="sub"><div><span class="k">ДОСТУПНО С ЛИМИТАМИ</span><span class="v">'+fmt(totalAvailable())+'</span></div>'+ 
@@ -1006,7 +1008,7 @@ function viewOverview(){
     '</div>'+ 
     '<div class="side biz">'+
       '<div class="lbl"><span class="tag"></span>Деньги бизнеса в обороте</div>'+ 
-      '<div class="hint">Банковские остатки ИП/ООО и наличные трёх студий. Общий счёт ООО и общая касса учитываются по одному разу.</div>'+ 
+      ''+ 
       '<div class="amt">'+fmt(bb)+'</div>'+ 
       '<div class="sub"><div><span class="k">БАНК ИП/ООО</span><span class="v">'+fmt(businessBankBalance())+'</span></div>'+ 
       '<div><span class="k">НАЛИЧНЫЕ СТУДИЙ</span><span class="v">'+fmt(businessCashBalance())+'</span></div>'+ 
@@ -1020,7 +1022,7 @@ function viewOverview(){
       return '<div class="clickable" data-act="open-account-tx" data-id="'+acc.id+'" style="flex:0 0 auto;min-width:150px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)">'+
         '<div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">'+acc.emoji+' '+esc(acc.name)+'</div>'+ 
         '<div class="mono" style="font-weight:700;font-size:17px;margin-top:5px;color:'+(b<0?'var(--liab)':'var(--ink)')+'">'+fmt(b,false,acc.currency)+'</div>'+ 
-        (acc.limit>0?'<div class="fs12 muted mono">'+(used>0?'долг '+fmt(used,false,acc.currency)+' · ':'')+'лимит '+fmt(acc.limit,false,acc.currency)+'</div>':'<div class="fs12 muted">'+esc(ownerLabel(acc))+'</div>')+
+        (acc.limit>0?'<div class="fs12 muted mono">'+(used>0?'долг '+fmt(used,false,acc.currency)+' · ':'')+'лимит '+fmt(acc.limit,false,acc.currency)+'</div>':'')+
       '</div>';}).join("")||'<div class="fs13 muted" style="padding:6px 0">Активных счетов пока нет.</div>')+
     '</div></div>'+ 
   '<div class="stats" style="margin-bottom:16px">'+
@@ -1080,10 +1082,10 @@ function viewAccounts(){
   const activeCount=activeAccounts().length, archivedCount=(S.accounts||[]).length-activeCount;
   return head("Счета","Банковские счета ИП/ООО и общая касса студий учитываются отдельно. Общий счёт ООО и общая касса не задваиваются по точкам.")+
     '<div class="card pad" style="margin-bottom:16px"><div class="two" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">'+
-      '<div><div class="eyebrow">Личные деньги</div><div class="mono" style="font-size:26px;font-weight:700;color:var(--personal)">'+fmt(personalBalance())+'</div><div class="fs12 muted">только личные счета</div></div>'+
-      '<div><div class="eyebrow">Безнал бизнеса</div><div class="mono" style="font-size:26px;font-weight:700;color:var(--biz)">'+fmt(businessBankBalance())+'</div><div class="fs12 muted">счета ИП и ООО</div></div>'+
-      '<div><div class="eyebrow">Наличные студий</div><div class="mono" style="font-size:26px;font-weight:700;color:var(--goal)">'+fmt(businessCashBalance())+'</div><div class="fs12 muted">общая касса трёх студий</div></div>'+
-      '<div><div class="eyebrow">Всего денег</div><div class="mono" style="font-size:26px;font-weight:700">'+fmt(personalBalance()+bizTotalBalance())+'</div><div class="fs12 muted">личные + бизнес</div></div>'+
+      '<div><div class="eyebrow">Личные деньги</div><div class="mono" style="font-size:26px;font-weight:700;color:var(--personal)">'+fmt(personalBalance())+'</div></div>'+
+      '<div><div class="eyebrow">Безнал бизнеса</div><div class="mono" style="font-size:26px;font-weight:700;color:var(--biz)">'+fmt(businessBankBalance())+'</div></div>'+
+      '<div><div class="eyebrow">Наличные студий</div><div class="mono" style="font-size:26px;font-weight:700;color:var(--goal)">'+fmt(businessCashBalance())+'</div></div>'+
+      '<div><div class="eyebrow">Всего денег</div><div class="mono" style="font-size:26px;font-weight:700">'+fmt(personalBalance()+bizTotalBalance())+'</div></div>'+
     '</div></div>'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="eyebrow">СЧЕТА · '+activeCount+(archivedCount?' · В АРХИВЕ '+archivedCount:'')+'</div><button class="btn sm" data-act="add-acc">'+svg(I.add)+'Добавить счёт</button></div>'+
     ((S.accounts||[]).length?'<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(285px,1fr))">'+cards+'</div>':'<div class="empty">'+svg(I.card)+'<b>Счетов пока нет</b></div>');
@@ -1495,7 +1497,7 @@ function viewBusiness(){
   }).join('');
   const legalCount=(S.legalEntities||[]).filter(e=>e.type!=='cash').length;
   return head("Бизнес","У студий безналичные операции идут на счёт соответствующего юрлица, а наличные всех трёх студий собираются в общей кассе.")+
-    '<div class="card pad" style="margin-bottom:16px;background:linear-gradient(180deg,var(--biz-bg),var(--surface))"><div class="two" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"><div><div class="eyebrow">Безнал бизнеса</div><div class="mono" style="font-size:24px;font-weight:700;color:var(--biz)">'+fmt(businessBankBalance())+'</div><div class="fs12 muted">реальные банковские остатки</div></div><div><div class="eyebrow">Наличные студий</div><div class="mono" style="font-size:24px;font-weight:700;color:var(--goal)">'+fmt(businessCashBalance())+'</div><div class="fs12 muted">общая касса трёх студий</div></div><div><div class="eyebrow">Юридических лиц</div><div class="mono" style="font-size:24px;font-weight:700">'+legalCount+'</div><div class="fs12 muted">ИП и ООО + отдельная касса</div></div><div><div class="eyebrow">Активных точек</div><div class="mono" style="font-size:24px;font-weight:700">'+activeBusinesses().length+'</div><div class="fs12 muted">включая служебные направления</div></div></div></div>'+
+    '<div class="card pad" style="margin-bottom:16px;background:linear-gradient(180deg,var(--biz-bg),var(--surface))"><div class="two" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"><div><div class="eyebrow">Безнал бизнеса</div><div class="mono" style="font-size:24px;font-weight:700;color:var(--biz)">'+fmt(businessBankBalance())+'</div></div><div><div class="eyebrow">Наличные студий</div><div class="mono" style="font-size:24px;font-weight:700;color:var(--goal)">'+fmt(businessCashBalance())+'</div></div><div><div class="eyebrow">Юридических лиц</div><div class="mono" style="font-size:24px;font-weight:700">'+legalCount+'</div></div><div><div class="eyebrow">Активных точек</div><div class="mono" style="font-size:24px;font-weight:700">'+activeBusinesses().length+'</div></div></div></div>'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="eyebrow">ЮРИДИЧЕСКИЕ ЛИЦА И КАССА</div><button class="btn sm" data-act="add-entity">'+svg(I.add)+'Добавить юрлицо</button></div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(285px,1fr));margin-bottom:20px">'+entityCards+'</div>'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="eyebrow">ТОЧКИ · '+activeBusinesses().length+'</div><button class="btn sm" data-act="add-biz">'+svg(I.add)+'Добавить точку</button></div>'+(activeBusinesses().length?'<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">'+cards+'</div>':'<div class="empty">'+svg(I.biz)+'<b>Точек пока нет</b></div>');
 }
@@ -1537,7 +1539,7 @@ function viewForecast(){
     statCard("Средний поток / мес",fmt(avg,true),"доходы − расходы",avg>=0?"i-in":"i-liab",I.in)+
   '</div>'+
   '<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Прогноз личного баланса</h3><div class="fs12 muted">6 месяцев вперёд</div></div><div class="card-b">'+line+
-    '<div class="fs12 muted" style="margin-top:10px">Линия учитывает средний ежемесячный поток ('+fmt(avg,true)+') и разовые возвраты долгов по срокам. Это оценка, а не гарантия — ведите записи регулярно для точности.</div>'+
+    ''+
   '</div></div>'+
   '<div class="card"><div class="card-h"><h3>Плановые движения по долгам</h3></div>'+
     (debtRows?'<table><thead><tr><th>Контрагент</th><th>Тип</th><th>Срок</th><th class="num">Сумма</th></tr></thead><tbody>'+debtRows+'</tbody></table>':'<div class="empty" style="padding:24px"><span class="fs13">Нет долгов со сроком возврата.</span></div>')+
