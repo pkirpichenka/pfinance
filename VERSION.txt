@@ -1,5 +1,5 @@
 PFinance handoff bundle
-Version: 4.5.4
+Version: 4.5.5
 Date: 2026-07-27
 Production domain: https://pfinance.flexico.by
 Source of truth: index.html

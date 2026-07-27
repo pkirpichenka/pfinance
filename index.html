@@ -1074,7 +1074,7 @@ function viewAccounts(){
       '<div class="mono" style="font-weight:700;font-size:24px;color:'+(bal<0?'var(--liab)':(isBusinessAccount(a)?'var(--biz)':'var(--personal)'))+'">'+fmt(bal,false,a.currency)+'</div>'+
       (points.length?'<div class="fs12 muted" style="margin-top:7px">Точки: '+points.map(b=>esc(b.name)).join(' · ')+'</div>':'')+
       (isCredit?'<div style="margin-top:11px"><div class="prog"><span style="width:'+pctUsed+'%;background:var(--liab)"></span></div><div class="fs12 muted" style="display:flex;justify-content:space-between;margin-top:6px"><span>Долг: '+fmt(used,false,a.currency)+'</span><span>Доступно: '+fmt(avail,false,a.currency)+'</span></div></div>':'')+
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="edit-acc" data-id="'+a.id+'">'+svg(I.edit)+'Изменить</button>'+(!a.archived&&!isCashPoolAccount(a)?'<button class="btn sm" data-act="adjust-acc" data-id="'+a.id+'">Сверить баланс</button>':'')+archiveAction+'</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="edit-acc" data-id="'+a.id+'">'+svg(I.edit)+'Изменить</button>'+(!a.archived?'<button class="btn sm" data-act="adjust-acc" data-id="'+a.id+'">Сверить остаток</button>':'')+archiveAction+'</div>'+
     '</div>';
   }).join('');
   const activeCount=activeAccounts().length, archivedCount=(S.accounts||[]).length-activeCount;
@@ -1738,7 +1738,7 @@ function openModal(title,bodyHtml,onSave,saveLabel){
   root._onSave=onSave;
   setTimeout(()=>{const f=root.querySelector("input,select,textarea");if(f)f.focus();},30);
 }
-function closeModal(){document.getElementById("modal-root").innerHTML="";}
+function closeModal(){document.getElementById("modal-root").innerHTML="";window.__reconcileAccountId=null;}
 function openSheet(title,bodyHtml){
   const root=document.getElementById("modal-root");
   root.innerHTML='<div class="modal-bg" data-act="modal-bg"><div class="modal">'+
@@ -1747,6 +1747,99 @@ function openSheet(title,bodyHtml){
   root._onSave=null;
 }
 function mval(id){const e=document.getElementById(id);return e?e.value:"";}
+
+
+/* =========================================================
+   СВЕРКА ФАКТИЧЕСКИХ ОСТАТКОВ
+   ========================================================= */
+function reconciliationCategoryOptions(items,current){
+  return (items||[]).map(x=>'<option '+(x===current?'selected':'')+'>'+esc(x)+'</option>').join('');
+}
+function reconciliationBusinesses(a){
+  return (a?.businessIds||[]).map(bizById).filter(b=>b&&!b.archived&&(isCashPoolAccount(a)?b.acceptsCash:b.legalEntityId===a.legalEntityId));
+}
+function reconciliationDelta(a){
+  const target=Number(mval('adj-target'));return Number.isFinite(target)?target-accountBalance(a.id):NaN;
+}
+function reconciliationDirection(a,delta){
+  const positive=delta>0,business=isBusinessAccount(a);
+  return {positive,type:business?(positive?'biz_income':'biz_expense'):(positive?'in':'out'),categories:business?(positive?S.categories.bizIn:S.categories.bizOut):(positive?S.categories.in:S.categories.out)};
+}
+function reconciliationSummary(a,delta){
+  const box=document.getElementById('adj-preview');if(!box)return;
+  if(!Number.isFinite(delta)){box.innerHTML='<span class="neg">Введите фактический остаток.</span>';return;}
+  const target=accountBalance(a.id)+delta,cls=delta>0?'pos':delta<0?'neg':'muted',sign=delta>0?'+':'';
+  box.innerHTML='<div class="kpi-line"><span class="muted">Сейчас в PFinance</span><b class="mono">'+fmt(accountBalance(a.id),false,a.currency)+'</b></div>'+ 
+    '<div class="kpi-line"><span class="muted">Фактически</span><b class="mono">'+fmt(target,false,a.currency)+'</b></div>'+ 
+    '<div class="kpi-line"><span class="muted">Разница</span><b class="mono '+cls+'">'+(delta===0?fmt(0,false,a.currency):sign+fmt(delta,false,a.currency))+'</b></div>';
+}
+function distributeCashReconciliation(a,force){
+  const delta=reconciliationDelta(a),amount=Math.abs(Number.isFinite(delta)?delta:0),fields=[...document.querySelectorAll('.cash-reconcile-amount')];
+  if(!fields.length)return;
+  const hasManual=fields.some(x=>x.dataset.manual==='1');
+  if(force||!hasManual){
+    const cents=Math.round(amount*100),base=Math.floor(cents/fields.length),rest=cents-base*fields.length;
+    fields.forEach((x,i)=>{x.value=((base+(i<rest?1:0))/100).toFixed(2);delete x.dataset.manual;});
+  }
+  const allocated=fields.reduce((sum,x)=>sum+(Number(x.value)||0),0),left=amount-allocated,summary=document.getElementById('adj-allocation-summary');
+  if(summary)summary.innerHTML='Распределено: <b class="mono">'+fmt(allocated,false,a.currency)+'</b> · Осталось: <b class="mono '+(Math.abs(left)<=0.01?'pos':'neg')+'">'+fmt(left,false,a.currency)+'</b>';
+}
+function updateReconciliationForm(forceDistribution=false){
+  const a=accById(window.__reconcileAccountId);if(!a)return;
+  const delta=reconciliationDelta(a),mode=mval('adj-mode')||'technical',recognized=document.getElementById('adj-recognized-wrap');
+  reconciliationSummary(a,delta);
+  if(recognized)recognized.classList.toggle('hidden',mode!=='recognized'||!Number.isFinite(delta)||Math.abs(delta)<0.005);
+  if(Number.isFinite(delta)&&Math.abs(delta)>=0.005){
+    const dir=reconciliationDirection(a,delta),cat=document.getElementById('adj-cat');
+    if(cat){const prev=cat.value;cat.innerHTML=reconciliationCategoryOptions(dir.categories,dir.categories.includes(prev)?prev:dir.categories[0]);}
+    const hint=document.getElementById('adj-mode-hint');if(hint)hint.textContent=mode==='technical'?'Изменится только остаток счёта; прибыль и отчёты не изменятся.':(dir.positive?'Разница будет отражена как доход.':'Разница будет отражена как расход.');
+  }
+  if(isCashPoolAccount(a))distributeCashReconciliation(a,forceDistribution);
+}
+function reconciliationModalHtml(a){
+  const current=accountBalance(a.id),cash=isCashPoolAccount(a),business=isBankBusinessAccount(a),points=reconciliationBusinesses(a);
+  const allocations=cash?'<div class="field"><label>Распределение разницы по студиям</label><div style="display:grid;gap:8px">'+points.map(b=>'<div class="kpi-line" style="gap:10px"><span>'+esc(b.name)+'</span><input class="inp mono cash-reconcile-amount" data-biz="'+b.id+'" type="number" min="0" step="0.01" value="0.00" style="width:130px;text-align:right"></div>').join('')+'</div><div class="fs12 muted" id="adj-allocation-summary" style="margin-top:8px"></div></div>':'';
+  const pointSelect=business?'<div class="field"><label>Точка бизнеса</label><select class="inp" id="adj-biz">'+points.map(b=>'<option value="'+b.id+'">'+esc(b.name)+'</option>').join('')+'</select></div>':'';
+  return '<div class="card pad" style="margin-bottom:12px"><div class="fs12 muted">Расчётный остаток</div><div class="mono" style="font-size:22px;font-weight:700;margin-top:3px">'+fmt(current,false,a.currency)+'</div></div>'+ 
+    '<div class="field"><label>Фактический остаток ('+sym(a.currency)+')</label><input class="inp mono" id="adj-target" type="number" step="0.01" value="'+current+'"></div>'+ 
+    '<div class="field"><label>Как учесть разницу</label><select class="inp" id="adj-mode"><option value="technical">Техническая корректировка</option><option value="recognized">Учесть как доход или расход</option></select></div>'+ 
+    '<div id="adj-recognized-wrap" class="hidden">'+pointSelect+'<div class="field"><label>Категория</label><select class="inp" id="adj-cat"></select></div></div>'+allocations+
+    '<div class="field"><label>Дата сверки</label><input class="inp" id="adj-date" type="date" value="'+TODAY()+'"></div>'+ 
+    '<div class="field"><label>Комментарий</label><input class="inp" id="adj-note" placeholder="По банковской выписке или пересчёту кассы"></div>'+ 
+    '<div class="card pad" id="adj-preview" style="background:var(--surface-2);margin-bottom:8px"></div><div class="fs12 muted" id="adj-mode-hint">Изменится только остаток счёта; прибыль и отчёты не изменятся.</div>';
+}
+function saveReconciliation(a){
+  const target=Number(mval('adj-target')),current=accountBalance(a.id);if(!Number.isFinite(target)){toast('Введите фактический остаток');return false;}
+  const delta=target-current;if(Math.abs(delta)<0.005){toast('Остаток уже совпадает');return false;}
+  const mode=mval('adj-mode')||'technical',date=mval('adj-date')||TODAY(),note=mval('adj-note').trim(),created=[];
+  if(isCashPoolAccount(a)){
+    const allocations=[...document.querySelectorAll('.cash-reconcile-amount')].map(x=>({biz:x.dataset.biz,amount:Number(x.value)||0})).filter(x=>x.amount>0),sum=allocations.reduce((s,x)=>s+x.amount,0);
+    if(!allocations.length){toast('Распределите разницу по студиям');return false;}
+    if(Math.abs(sum-Math.abs(delta))>0.01){toast('Распределение должно совпадать с разницей');return false;}
+    const dir=reconciliationDirection(a,delta),cat=mval('adj-cat')||(dir.categories||[])[0]||'Прочее';
+    for(const part of allocations){
+      const b=bizById(part.biz);if(!b||!accountAvailableForBiz(a,b,'cash')){toast('Проверьте распределение по студиям');return false;}
+      const t=mode==='recognized'?{id:uid(),type:dir.type,biz:b.id,account:a.id,paymentMethod:'cash',amount:part.amount,cat,date,note}:{id:uid(),type:'biz_adjustment',biz:b.id,account:a.id,paymentMethod:'cash',amount:part.amount,delta:(delta>0?1:-1)*part.amount,cat:'Корректировка наличных',date,note};
+      created.push(t);
+    }
+  }else if(mode==='recognized'){
+    const dir=reconciliationDirection(a,delta),cat=mval('adj-cat')||(dir.categories||[])[0]||'Прочее',t={id:uid(),type:dir.type,account:a.id,amount:Math.abs(delta),cat,date,note};
+    if(isBankBusinessAccount(a)){
+      const b=bizById(mval('adj-biz'));if(!b||!accountAvailableForBiz(a,b,'bank')){toast('Выберите точку, связанную со счётом');return false;}
+      t.biz=b.id;t.paymentMethod='bank';
+    }
+    created.push(t);
+  }else created.push({id:uid(),type:'account_adjustment',account:a.id,amount:Math.abs(delta),delta,cat:'Корректировка баланса',date,note});
+  S.tx.push(...created);persist();render();haptic(16);const ids=new Set(created.map(t=>t.id));
+  showUndo('Сверка сохранена · '+(delta>0?'+':'')+fmt(delta,false,a.currency),()=>{S.tx=S.tx.filter(t=>!ids.has(t.id));persist();});
+  return true;
+}
+function openReconciliation(a){
+  if(!a||a.archived){toast('Счёт недоступен');return;}
+  window.__reconcileAccountId=a.id;
+  openModal('Сверить остаток · '+a.name,reconciliationModalHtml(a),()=>saveReconciliation(a),'Сформировать операцию');
+  setTimeout(()=>updateReconciliationForm(true),0);
+}
 
 function legalEntityForm(e){
   e=e||{name:'',type:'ip'};
@@ -1909,7 +2002,7 @@ document.addEventListener("click",e=>{
   // accounts
   if(act==="add-acc"){openModal("Новый счёт",accForm(),()=>{const n=mval("ac-name").trim(),scope=mval("ac-scope"),legalEntityId=mval("ac-entity");if(!n){toast("Введите название");return false;}if(scope==="business"&&!legalEntityId){toast("Для счёта бизнеса выберите юрлицо");return false;}const businessIds=[...document.querySelectorAll('.ac-biz-check:checked')].map(x=>x.value).filter(id=>scope==='business'&&bizById(id)?.legalEntityId===legalEntityId);S.accounts.push({id:uid(),name:n,bankName:mval("ac-bank").trim(),emoji:mval("ac-emoji")||"💳",kind:mval("ac-kind"),currency:mval("ac-cur"),opening:+mval("ac-open")||0,limit:+mval("ac-limit")||0,archived:false,scope,legalEntityId:scope==='business'?legalEntityId:null,businessIds:scope==='business'?businessIds:[]});persist();render();toast("Счёт добавлен");});return;}
   if(act==="edit-acc"){const a=accById(el.dataset.id),locked=hasAccountTx(a.id);openModal("Изменить счёт",accForm(a),()=>{const n=mval("ac-name").trim();if(!n){toast("Введите название");return false;}a.name=n;a.bankName=mval("ac-bank").trim();a.emoji=mval("ac-emoji")||"💳";a.kind=a.sharedCash?'cash':mval("ac-kind");a.limit=a.sharedCash?0:(+mval("ac-limit")||0);if(!locked&&!a.sharedCash){a.scope=mval("ac-scope");a.legalEntityId=a.scope==='business'?mval("ac-entity"):null;a.currency=mval("ac-cur");a.opening=+mval("ac-open")||0;}if(a.sharedCash){a.scope='business';a.legalEntityId='le-cash';a.currency='BYN';a.opening=0;a.businessIds=[...document.querySelectorAll('.ac-biz-check:checked')].map(x=>x.value).filter(id=>bizById(id)?.acceptsCash);}else a.businessIds=a.scope==='business'?[...document.querySelectorAll('.ac-biz-check:checked')].map(x=>x.value).filter(id=>bizById(id)?.legalEntityId===a.legalEntityId):[];persist();render();toast("Сохранено");});return;}
-  if(act==="adjust-acc"){const a=accById(el.dataset.id);if(isCashPoolAccount(a)){toast("Наличные сверяются отдельно на карточках студий");return;}const current=accountBalance(a.id);openModal("Сверить баланс счёта",'<div class="field"><label>Фактический баланс ('+sym(a.currency)+')</label><input class="inp mono" id="adj-target" type="number" step="0.01" value="'+current+'"></div><div class="field"><label>Дата сверки</label><input class="inp" id="adj-date" type="date" value="'+TODAY()+'"></div><div class="field"><label>Комментарий</label><input class="inp" id="adj-note" placeholder="По банковской выписке"></div>',()=>{const target=Number(mval("adj-target"));if(!Number.isFinite(target)){toast("Введите баланс");return false;}const delta=target-accountBalance(a.id);if(Math.abs(delta)<1e-9){toast("Баланс уже совпадает");return false;}S.tx.push({id:uid(),type:"account_adjustment",account:a.id,amount:Math.abs(delta),delta,cat:"Корректировка баланса",date:mval("adj-date")||TODAY(),note:mval("adj-note").trim()});persist();render();toast("Баланс скорректирован");});return;}
+  if(act==="adjust-acc"){openReconciliation(accById(el.dataset.id));return;}
   if(act==="archive-acc"){const a=accById(el.dataset.id);if(a?.system){toast("Системную общую кассу нельзя архивировать");return;}a.archived=true;persist();render();toast("Счёт перемещён в архив");return;}
   if(act==="restore-acc"){accById(el.dataset.id).archived=false;persist();render();toast("Счёт возвращён из архива");return;}
   if(act==="del-acc"){const a=accById(el.dataset.id);if(a?.system){toast("Системную общую кассу удалить нельзя");return;}if(hasAccountTx(el.dataset.id)){a.archived=true;persist();render();toast("Счёт с историей перемещён в архив");return;}S.accounts=S.accounts.filter(a=>a.id!==el.dataset.id);persist();render();toast("Счёт удалён");return;}
@@ -2053,6 +2146,7 @@ document.addEventListener("change",e=>{
   if(e.target.id==="f-pbe-settlement")updatePbeSettlement();
   if(["d-dir","d-currency","d-account","d-move"].includes(e.target.id))updateDebtMoveForm(true);
   if(["r-account","r-move"].includes(e.target.id)&&window.__currentRepayDebt)updateRepayMoveForm(window.__currentRepayDebt,true);
+  if(e.target.id==="adj-mode"||e.target.id==="adj-biz")updateReconciliationForm(false);
   if(e.target.dataset&&e.target.dataset.act==="rate-input"){
     const c=curObj(e.target.dataset.code);if(c){c.rate=+e.target.value||1;persist();render();}
   }
@@ -2071,6 +2165,8 @@ document.addEventListener("input",e=>{
   if(e.target.id==="d-account-amount")e.target.dataset.manual='1';
   if(e.target.id==="r-amt"&&window.__currentRepayDebt)updateRepayMoveForm(window.__currentRepayDebt,false);
   if(e.target.id==="r-account-amount")e.target.dataset.manual='1';
+  if(e.target.id==="adj-target")updateReconciliationForm(true);
+  if(e.target.classList?.contains("cash-reconcile-amount")){e.target.dataset.manual='1';updateReconciliationForm(false);}
   if(e.target.id&&e.target.id.startsWith("f-"))captureAddDraft();
   if(e.target.id==="f-amount")updateCompactAddChrome();
 });
