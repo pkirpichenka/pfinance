@@ -282,6 +282,15 @@ textarea.inp{resize:vertical;min-height:60px}
 .preset-chip{flex:0 0 auto;border:1px solid var(--line-strong);background:var(--surface-2);color:var(--ink-2);border-radius:999px;padding:7px 11px;font-size:12.5px;font-weight:600;white-space:nowrap}
 .preset-chip:hover{background:var(--surface-3);color:var(--ink)}
 .tx-active-filter{background:var(--asset-bg);color:var(--asset);border-color:transparent}
+.tx-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.tx-filters{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;margin-bottom:14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tx-filters::-webkit-scrollbar{display:none}
+.tx-filters .btn{flex:0 0 auto;border-radius:18px}
+.tx-table-card table td{padding-top:12px;padding-bottom:12px}
+.acc-group{margin-bottom:20px}
+.acc-group:last-child{margin-bottom:0}
+.acc-group-h{margin-bottom:11px}
+.acc-grid{grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:14px}
 .chart-drill{cursor:pointer}
 .chart-drill:hover rect{opacity:1!important}
 
@@ -1062,8 +1071,9 @@ function forecastMini(){
    ВИД: СЧЕТА
    ========================================================= */
 function viewAccounts(){
-  const ordered=[...(S.accounts||[])].sort((a,b)=>Number(!!a.archived)-Number(!!b.archived)||String(ownerLabel(a)).localeCompare(String(ownerLabel(b))));
-  const cards=ordered.map(a=>{
+  const gp=a=>a.archived?3:(isPersonalAccount(a)?0:(isCashPoolAccount(a)?2:1));
+  const ordered=[...(S.accounts||[])].sort((a,b)=>gp(a)-gp(b)||String(ownerLabel(a)).localeCompare(String(ownerLabel(b))));
+  const accCard=a=>{
     const bal=accountBalance(a.id), used=accUsedCredit(a.id), avail=accAvailable(a.id);
     const history=hasAccountTx(a.id), isCredit=(a.limit||0)>0;
     const pctUsed=isCredit?Math.min(100,Math.round(used/a.limit*100)):0;
@@ -1083,7 +1093,10 @@ function viewAccounts(){
       (isCredit?'<div style="margin-top:11px"><div class="prog"><span style="width:'+pctUsed+'%;background:var(--liab)"></span></div><div class="fs12 muted" style="display:flex;justify-content:space-between;margin-top:6px"><span>Долг: '+fmt(used,false,a.currency)+'</span><span>Доступно: '+fmt(avail,false,a.currency)+'</span></div></div>':'')+
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="edit-acc" data-id="'+a.id+'">'+svg(I.edit)+'Изменить</button>'+(!a.archived?'<button class="btn sm" data-act="adjust-acc" data-id="'+a.id+'">Сверить остаток</button>':'')+archiveAction+'</div>'+
     '</div>';
-  }).join('');
+  };
+  const groupsOrder=[],byGroup={};
+  ordered.forEach(a=>{const g=a.archived?'В архиве':(isPersonalAccount(a)?'Личные счета':(isCashPoolAccount(a)?'Наличная касса студий':(entityById(a.legalEntityId)?.name||'Счета бизнеса')));if(!byGroup[g]){byGroup[g]=[];groupsOrder.push(g);}byGroup[g].push(accCard(a));});
+  const sections=groupsOrder.map(g=>'<div class="acc-group"><div class="eyebrow acc-group-h">'+esc(g)+' · '+byGroup[g].length+'</div><div class="grid acc-grid">'+byGroup[g].join('')+'</div></div>').join('');
   const activeCount=activeAccounts().length, archivedCount=(S.accounts||[]).length-activeCount;
   return head("Счета","Банковские счета ИП/ООО и общая касса студий учитываются отдельно. Общий счёт ООО и общая касса не задваиваются по точкам.")+
     '<div class="card pad" style="margin-bottom:16px"><div class="two" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">'+
@@ -1093,7 +1106,7 @@ function viewAccounts(){
       '<div><div class="eyebrow">Всего денег</div><div class="mono" style="font-size:26px;font-weight:700">'+fmt(personalBalance()+bizTotalBalance())+'</div></div>'+
     '</div></div>'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="eyebrow">СЧЕТА · '+activeCount+(archivedCount?' · В АРХИВЕ '+archivedCount:'')+'</div><button class="btn sm" data-act="add-acc">'+svg(I.add)+'Добавить счёт</button></div>'+
-    ((S.accounts||[]).length?'<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(285px,1fr))">'+cards+'</div>':'<div class="empty">'+svg(I.card)+'<b>Счетов пока нет</b></div>');
+    ((S.accounts||[]).length?sections:'<div class="empty">'+svg(I.card)+'<b>Счетов пока нет</b></div>');
 }
 
 /* =========================================================
@@ -1428,7 +1441,7 @@ function viewTx(){
   }).join('');
   const body=list.length?'<table><thead><tr><th>Дата</th><th>Тип</th><th>Категория / точка</th><th>Счёт</th><th class="num">Сумма</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="empty">'+svg(I.tx)+'<b>Операций пока нет</b><span class="fs13">Добавьте первую запись.</span></div>';
   const activeFilters=(accountId?'<button class="btn sm tx-active-filter" data-act="clear-tx-account">Счёт: '+esc(accById(accountId)?.name||'удалён')+' ✕</button>':'')+(exactMonth?'<button class="btn sm tx-active-filter" data-act="clear-tx-month">Месяц: '+esc(monthLabel(exactMonth))+' ✕</button>':'');
-  return head("Операции",list.length+" записей")+(activeFilters?'<div class="filters">'+activeFilters+'</div>':'')+'<div class="filters">'+filterBtn("all","Все")+filterBtn("in","Доходы")+filterBtn("out","Расходы")+filterBtn("transfer","Переводы")+filterBtn("entity_transfer","Между юрлицами")+filterBtn("cash_transfer","Инкассация")+filterBtn("draw","Выводы")+filterBtn("contribution","Взносы")+filterBtn("biz_income","Доход бизнеса")+filterBtn("biz_expense","Расход бизнеса")+filterBtn("personal_biz_expense","Оплачено лично")+filterBtn("debt_moves","Долги")+filterBtn("adjustments","Корректировки")+'<span class="spacer"></span><div class="seg"><button class="'+(p==="all"&&!exactMonth?"on":"")+'" data-act="tx-period" data-p="all">За всё время</button><button class="'+(p==="month"&&!exactMonth?"on":"")+'" data-act="tx-period" data-p="month">Этот месяц</button></div><button class="btn primary sm" data-act="nav" data-v="add">'+svg(I.add)+'Добавить</button></div><div class="card">'+body+'</div>';
+  return head("Операции",list.length+" записей")+(activeFilters?'<div class="filters">'+activeFilters+'</div>':'')+'<div class="tx-toolbar"><div class="seg"><button class="'+(p==="all"&&!exactMonth?"on":"")+'" data-act="tx-period" data-p="all">За всё время</button><button class="'+(p==="month"&&!exactMonth?"on":"")+'" data-act="tx-period" data-p="month">Этот месяц</button></div><button class="btn primary sm" data-act="nav" data-v="add">'+svg(I.add)+'Добавить</button></div><div class="tx-filters">'+filterBtn("all","Все")+filterBtn("in","Доходы")+filterBtn("out","Расходы")+filterBtn("transfer","Переводы")+filterBtn("entity_transfer","Между юрлицами")+filterBtn("cash_transfer","Инкассация")+filterBtn("draw","Выводы")+filterBtn("contribution","Взносы")+filterBtn("biz_income","Доход бизнеса")+filterBtn("biz_expense","Расход бизнеса")+filterBtn("personal_biz_expense","Оплачено лично")+filterBtn("debt_moves","Долги")+filterBtn("adjustments","Корректировки")+'</div><div class="card tx-table-card">'+body+'</div>';
 }
 
 /* =========================================================
