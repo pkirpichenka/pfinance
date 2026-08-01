@@ -476,9 +476,13 @@ window.PFBackendReady=new Promise(resolve=>{window.__resolvePFBackendReady=resol
       async load(){
         const { data:{ user } } = await sb.auth.getUser();
         if(!user) return null;
-        const { data, error } = await sb.from('app_state').select('data').eq('user_id', user.id).maybeSingle();
+        const { data, error } = await sb.from('app_state').select('data, rev').eq('user_id', user.id).maybeSingle();
         if(error) throw error;
-        return data ? data.data : null;
+        if(!data) return null;
+        const st = data.data;
+        // ревизия из БД (Фаза 2.1) — источник истины; дублируем в meta.rev для клиента
+        if(st && data.rev!=null){ st.meta = st.meta||{}; st.meta.rev = data.rev; }
+        return st;
       },
       async save(state){
         const { data:{ user } } = await sb.auth.getUser();
@@ -486,6 +490,22 @@ window.PFBackendReady=new Promise(resolve=>{window.__resolvePFBackendReady=resol
         const { error } = await sb.from('app_state')
           .upsert({ user_id:user.id, data:state }, { onConflict:'user_id' });
         if(error) throw error;
+      },
+      // Атомарное сохранение с проверкой ревизии на стороне БД (Фаза 2.1).
+      // Требует SQL-функции pf_save_state (см. handoff/07-SUPABASE-MIGRATION-2_1.sql).
+      // Если функция не развёрнута — бросает {__noRpc:true}, и клиент откатывается
+      // на проверку «прочитать-сравнить-записать» из Фазы 2.
+      async saveAtomic(state, baseRev){
+        const { data, error } = await sb.rpc('pf_save_state', { p_data: state, p_base_rev: baseRev });
+        if(error){
+          const code = error.code || '';
+          const msg = (error.message||'')+' '+(error.details||'');
+          if(code==='PGRST202' || code==='42883' || /pf_save_state/.test(msg) && /(does not exist|not find|schema cache)/i.test(msg)){
+            throw { __noRpc:true };
+          }
+          throw error;
+        }
+        return data; // { ok:boolean, rev:number }
       }
     };
 
@@ -539,6 +559,25 @@ const Store={
     if(_saveInFlight){ _savePending=true; return; }
     _saveInFlight=true; setSyncStatus('saving');
     try{
+      // Быстрый атомарный путь (Фаза 2.1): БД сама проверяет ревизию — гонки нет.
+      if(window.PFBackend.saveAtomic){
+        let res=null,noRpc=false;
+        try{ res=await window.PFBackend.saveAtomic(state, baseRev); }
+        catch(e){ if(e&&e.__noRpc){ noRpc=true; } else { setSyncStatus('offline'); return; } }
+        if(!noRpc){
+          if(res&&res.ok){
+            baseRev=res.rev; state.meta=state.meta||{}; state.meta.rev=res.rev;
+            window.__mem=JSON.stringify(state); syncDirty=false; setSyncStatus('synced');
+          }else{
+            setSyncStatus('conflict');
+            let remote=null; try{ remote=await window.PFBackend.load(); }catch(_){}
+            if(remote) showSyncConflict(remote);
+          }
+          return;
+        }
+        // функция не развёрнута — падаем в совместимый путь ниже
+      }
+      // Совместимый путь (Фаза 2, до применения миграции 2.1): прочитать-сравнить-записать.
       let remote=null;
       try{ remote=await window.PFBackend.load(); }
       catch(e){ setSyncStatus('offline'); return; }
@@ -2118,7 +2157,7 @@ document.addEventListener("click",e=>{
   if(act==="import"){importJSON();return;}
   if(act==="sync-check"){toast("Проверяю синхронизацию…");reconcileFromRemote().then(()=>{if(syncState!=="conflict")toast(syncState==="synced"?"Данные актуальны":"Проверка завершена");});return;}
   if(act==="sync-reload"){const r=window.__syncConflictRemote;closeModal();if(r)applyRemoteState(r,false);return;}
-  if(act==="sync-overwrite"){const r=window.__syncConflictRemote;closeModal();if(!r||!window.PFBackend)return;setSyncStatus("saving");(async()=>{try{baseRev=stateRev(r);S.meta=S.meta||{};S.meta.rev=baseRev+1;await window.PFBackend.save(S);baseRev=S.meta.rev;window.__mem=JSON.stringify(S);syncDirty=false;setSyncStatus("synced");toast("Облако перезаписано вашей версией");}catch(e){setSyncStatus("offline");toast("Не удалось сохранить — нет связи с облаком");}})();return;}
+  if(act==="sync-overwrite"){const r=window.__syncConflictRemote;closeModal();if(!r||!window.PFBackend)return;baseRev=stateRev(r);syncDirty=true;Store.save(S).then(()=>{if(syncState==="synced")toast("Облако перезаписано вашей версией");});return;}
   if(act==="reset"){openModal("Начать с чистого листа?",'<p style="margin:0;color:var(--ink-2)">Все операции, долги и цели будут удалены. Балансы и лимиты счетов обнулятся. Можно оставить структуру — счета, точки бизнеса, валюты и категории.</p><label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13.5px"><input type="checkbox" id="keep-biz" checked> Оставить счета, точки бизнеса, валюты и категории</label>',
     ()=>{const keep=document.getElementById("keep-biz").checked;const fresh=seed();
       if(keep){S={...fresh,settings:S.settings,currencies:S.currencies,legalEntities:S.legalEntities,accounts:S.accounts.map(a=>({...a,opening:0,limit:0,archived:false})),businesses:S.businesses.map(b=>({...b,opening:0,cashOpening:0,archived:false})),categories:S.categories,presets:S.presets,tx:[],debts:[],goals:[],meta:{...fresh.meta,lastEntryDate:null,lastNotifiedDate:null,lastUsed:{},created:TODAY()}};}
