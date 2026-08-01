@@ -111,9 +111,9 @@ h1,h2,h3,h4{font-family:var(--disp);margin:0;font-weight:600;letter-spacing:-.01
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-s)}
 .card.pad{padding:18px}
 .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
-.card-h h3{font-size:15px}
-.card-b{padding:16px 18px}
-.eyebrow{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.card-h h3{font-size:14px}
+.card-b{padding:14px 18px}
+.eyebrow{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 
 /* reminder banner */
 .reminder{
@@ -139,15 +139,15 @@ h1,h2,h3,h4{font-family:var(--disp);margin:0;font-weight:600;letter-spacing:-.01
 .side .amt{font-family:var(--mono);font-weight:700;font-size:34px;letter-spacing:-.03em;line-height:1}
 .personal .amt{color:var(--personal)}.biz .amt{color:var(--biz)}
 .side .sub{margin-top:12px;display:flex;gap:18px;flex-wrap:wrap}
-.side .sub .k{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.03em}
+.side .sub .k{font-size:10px;color:var(--faint);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase}
 .side .sub .v{font-family:var(--mono);font-weight:600;font-size:14px;display:block;margin-top:1px}
 
 /* ---------- Stat cards ---------- */
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
-.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;box-shadow:var(--shadow-s)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow-s)}
 .stat .top{display:flex;align-items:center;justify-content:space-between}
-.stat .name{font-size:12px;color:var(--muted);font-weight:500}
-.stat .ico{width:26px;height:26px;border-radius:8px;display:grid;place-items:center}
+.stat .name{font-size:11px;color:var(--faint);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.stat .ico{width:24px;height:24px;border-radius:8px;display:grid;place-items:center}
 .stat .ico svg{width:15px;height:15px}
 .stat .val{font-family:var(--mono);font-weight:700;font-size:24px;letter-spacing:-.03em;margin-top:10px}
 .stat .foot{display:none}
@@ -249,6 +249,12 @@ textarea.inp{resize:vertical;min-height:60px}
 .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .overview-period{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end;margin:-4px 0 14px;position:relative;z-index:1;max-width:100%}
 .overview-period .seg{max-width:100%}
+.overview-period{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:14px}.overview-period .eyebrow{margin-right:2px}.overview-period .seg{box-shadow:inset 0 0 0 1px var(--line)}
+.ov-hero{border-radius:18px;box-shadow:var(--shadow)}
+.ov-hero .side{padding:24px 24px 20px}.ov-hero .side .amt{margin-top:6px}.ov-hero .side .sub{margin-top:14px;row-gap:12px}.ov-hero .side .sub>div{min-width:126px}.ov-hero .side .sub .v{margin-top:4px;font-size:15px}
+.reminder{padding:12px 16px;border-radius:16px}.reminder .txt b{font-size:14px}.reminder .txt span{font-size:12px}
+.ov-accounts-card{border-radius:16px;overflow:hidden}.ov-account-strip{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;scroll-snap-type:x proximity}.ov-account-strip::-webkit-scrollbar{display:none}.ov-account-item{flex:0 0 auto;min-width:168px;border:1px solid var(--line);border-radius:14px;padding:13px 14px;background:var(--surface-2);scroll-snap-align:start}.ov-account-item .t{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px;line-height:1.25}.ov-account-item .v{font-weight:700;font-size:18px;margin-top:8px}.ov-account-item .m{font-size:11px;color:var(--faint);margin-top:6px;text-transform:uppercase;letter-spacing:.05em}
+.ov-kpis .stat{border-radius:16px}.ov-grid-main,.ov-grid-secondary{gap:16px}.ov-grid-main .card,.ov-grid-secondary .card{border-radius:16px}.ov-grid-main .card-h .fs12,.ov-grid-secondary .card-h .fs12{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em}.forecast-compact .kpi-line{padding:8px 0;border-bottom:1px solid var(--surface-3)}.forecast-compact .kpi-line:last-of-type{border-bottom:none}.forecast-compact .kpi-line span{font-size:12px}.forecast-compact .kpi-line b{font-family:var(--mono);font-size:16px}.forecast-compact .note{display:none}
 .overview-period button{pointer-events:auto}
 .mobile-nav{display:none}
 .mobile-top{display:none}
@@ -995,7 +1001,7 @@ function viewOverview(){
 
   return head("Обзор","Общая картина ваших финансов на сегодня")+
   periodControl+banner+
-  '<div class="split" style="margin-bottom:16px">'+
+  '<div class="split ov-hero" style="margin-bottom:16px">'+
     '<div class="side personal">'+
       '<div class="lbl"><span class="tag"></span>Ваши личные деньги</div>'+ 
       ''+ 
@@ -1016,26 +1022,26 @@ function viewOverview(){
       '<div><span class="k">ВОЗВРАЩЕНО / '+periodShort+'</span><span class="v">'+fmt(a.contribution)+'</span></div></div>'+ 
     '</div>'+ 
   '</div>'+ 
-  '<div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Счета</h3><button class="btn ghost sm" data-act="nav" data-v="accounts">Управлять →</button></div>'+ 
-    '<div class="card-b" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:14px">'+
+  '<div class="card ov-accounts-card" style="margin-bottom:16px"><div class="card-h"><h3>Счета</h3><button class="btn ghost sm" data-act="nav" data-v="accounts">Управлять →</button></div>'+ 
+    '<div class="card-b ov-account-strip">'+
     (activeAccounts().map(acc=>{const b=accountBalance(acc.id);const used=accUsedCredit(acc.id);
-      return '<div class="clickable" data-act="open-account-tx" data-id="'+acc.id+'" style="flex:0 0 auto;min-width:150px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)">'+
-        '<div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">'+acc.emoji+' '+esc(acc.name)+'</div>'+ 
-        '<div class="mono" style="font-weight:700;font-size:17px;margin-top:5px;color:'+(b<0?'var(--liab)':'var(--ink)')+'">'+fmt(b,false,acc.currency)+'</div>'+ 
-        (acc.limit>0?'<div class="fs12 muted mono">'+(used>0?'долг '+fmt(used,false,acc.currency)+' · ':'')+'лимит '+fmt(acc.limit,false,acc.currency)+'</div>':'')+
+      return '<div class="clickable ov-account-item" data-act="open-account-tx" data-id="'+acc.id+'">'+
+        '<div class="t">'+acc.emoji+' '+esc(acc.name)+'</div>'+ 
+        '<div class="mono v" style="color:'+(b<0?'var(--liab)':'var(--ink)')+'">'+fmt(b,false,acc.currency)+'</div>'+ 
+        (acc.limit>0?'<div class="m mono">лимит '+fmt(acc.limit,false,acc.currency)+'</div>':'')+
       '</div>';}).join("")||'<div class="fs13 muted" style="padding:6px 0">Активных счетов пока нет.</div>')+
     '</div></div>'+ 
-  '<div class="stats" style="margin-bottom:16px">'+
+  '<div class="stats ov-kpis" style="margin-bottom:16px">'+
     statCard("Реальный доход "+periodText,fmt(realIncomePeriod(period),true),"личный доход + чистый вывод","i-in",I.in,'data-act="open-tx-filter" data-filter="in"')+
     statCard("Расходы "+periodText,fmt(a.expense),"только личные траты","i-out",I.out,'data-act="open-tx-filter" data-filter="out"')+
     statCard("Мне должны",fmt(owedToMe()),S.debts.filter(d=>d.dir==="in"&&debtRemaining(d)>0).length+" активных долга","i-asset",I.debt,'data-act="nav" data-v="debts"')+
     statCard("Я должен",fmt(iOwe()),S.debts.filter(d=>d.dir==="out"&&debtRemaining(d)>0).length+" обязательства","i-liab",I.wallet,'data-act="nav" data-v="debts"')+
   '</div>'+ 
-  '<div class="grid" style="grid-template-columns:1.6fr 1fr;gap:16px">'+
-    '<div class="card"><div class="card-h"><h3>Динамика за 6 месяцев</h3><div class="fs12 muted">чистый личный поток по месяцам</div></div><div class="card-b">'+chart+'</div></div>'+ 
+  '<div class="grid ov-grid-main" style="grid-template-columns:1.6fr 1fr;gap:16px">'+
+    '<div class="card"><div class="card-h"><h3>Динамика за 6 месяцев</h3><div class="fs12 muted">личный поток</div></div><div class="card-b">'+chart+'</div></div>'+ 
     '<div class="card"><div class="card-h"><h3>Ближайшие возвраты</h3><button class="btn ghost sm" data-act="nav" data-v="debts">Все →</button></div><div class="card-b" style="padding-top:6px">'+upHtml+'</div></div>'+ 
   '</div>'+ 
-  '<div class="grid" style="grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">'+
+  '<div class="grid ov-grid-secondary" style="grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">'+
     '<div class="card"><div class="card-h"><h3>Прогресс по целям</h3><button class="btn ghost sm" data-act="nav" data-v="goals">Все →</button></div><div class="card-b">'+goalsHtml+'</div></div>'+ 
     forecastMini()+
   '</div>';
@@ -1045,11 +1051,11 @@ function forecastMini(){
   const pb=personalBalance();
   const avg=avgMonthlyNet();
   const in3=pb+avg*3;
-  return '<div class="card"><div class="card-h"><h3>Прогноз баланса</h3><button class="btn ghost sm" data-act="nav" data-v="forecast">Детали →</button></div><div class="card-b">'+
+  return '<div class="card forecast-compact"><div class="card-h"><h3>Прогноз баланса</h3><button class="btn ghost sm" data-act="nav" data-v="forecast">Детали →</button></div><div class="card-b">'+
     '<div class="kpi-line"><span class="muted">Сейчас на руках</span><b>'+fmt(pb)+'</b></div>'+
     '<div class="kpi-line"><span class="muted">Средний поток / мес</span><b class="'+(avg>=0?'pos':'neg')+'">'+fmt(avg,true)+'</b></div>'+
     '<div class="kpi-line"><span class="muted">Через 3 месяца (оценка)</span><b class="'+(in3>=pb?'pos':'neg')+'">'+fmt(in3)+'</b></div>'+
-    '<div class="fs12 muted" style="margin-top:8px">Оценка по среднему за последние месяцы. Чем регулярнее записи — тем точнее прогноз.</div>'+
+    '<div class="fs12 muted note" style="margin-top:8px">Оценка по среднему за последние месяцы. Чем регулярнее записи — тем точнее прогноз.</div>'+
   '</div></div>';
 }
 
@@ -1532,7 +1538,7 @@ function viewForecast(){
 
   const in1=pb+avg, in3=pb+avg*3, in6=run;
   return head("Прогноз","Оценка будущего баланса по вашим средним показателям и запланированным возвратам долгов.")+
-  '<div class="stats" style="margin-bottom:16px">'+
+  '<div class="stats ov-kpis" style="margin-bottom:16px">'+
     statCard("Через 1 месяц",fmt(pb+avg),"оценка",in1>=pb?"i-in":"i-liab",I.forecast)+
     statCard("Через 3 месяца",fmt(in3),"оценка",in3>=pb?"i-in":"i-liab",I.forecast)+
     statCard("Через 6 месяцев",fmt(in6),"с учётом долгов",in6>=pb?"i-in":"i-liab",I.forecast)+
@@ -2048,9 +2054,9 @@ document.addEventListener("click",e=>{
     persist();render();toast("Напоминание настроено");return;}
   if(act==="export"){downloadJSON();return;}
   if(act==="import"){importJSON();return;}
-  if(act==="reset"){openModal("Начать с чистого листа?",'<p style="margin:0;color:var(--ink-2)">Все операции, долги и цели будут удалены. Балансы счетов обнулятся. Можно оставить структуру — счета, точки бизнеса, валюты и категории.</p><label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13.5px"><input type="checkbox" id="keep-biz" checked> Оставить счета, точки бизнеса, валюты и категории</label>',
+  if(act==="reset"){openModal("Начать с чистого листа?",'<p style="margin:0;color:var(--ink-2)">Все операции, долги и цели будут удалены. Балансы и лимиты счетов обнулятся. Можно оставить структуру — счета, точки бизнеса, валюты и категории.</p><label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13.5px"><input type="checkbox" id="keep-biz" checked> Оставить счета, точки бизнеса, валюты и категории</label>',
     ()=>{const keep=document.getElementById("keep-biz").checked;const fresh=seed();
-      if(keep){S={...fresh,settings:S.settings,currencies:S.currencies,legalEntities:S.legalEntities,accounts:S.accounts.map(a=>({...a,opening:0,archived:false})),businesses:S.businesses.map(b=>({...b,opening:0,cashOpening:0,archived:false})),categories:S.categories,presets:S.presets,tx:[],debts:[],goals:[],meta:{...fresh.meta,lastEntryDate:null,lastNotifiedDate:null,lastUsed:{},created:TODAY()}};}
+      if(keep){S={...fresh,settings:S.settings,currencies:S.currencies,legalEntities:S.legalEntities,accounts:S.accounts.map(a=>({...a,opening:0,limit:0,archived:false})),businesses:S.businesses.map(b=>({...b,opening:0,cashOpening:0,archived:false})),categories:S.categories,presets:S.presets,tx:[],debts:[],goals:[],meta:{...fresh.meta,lastEntryDate:null,lastNotifiedDate:null,lastUsed:{},created:TODAY()}};}
       else {S={...fresh,accounts:fresh.accounts.map(a=>({...a,opening:0})),businesses:fresh.businesses.map(b=>({...b,opening:0,cashOpening:0})),tx:[],debts:[],goals:[]};}
       S.ui={view:"overview",txFilter:"all",txPeriod:"all",txAccount:null,txMonth:null,overviewPeriod:"month"};applyTheme();persist();render();toast("Готово — можно вести реальный учёт");},"Да, очистить");
     return;}
