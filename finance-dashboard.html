@@ -219,7 +219,7 @@ textarea.inp{resize:vertical;min-height:60px}
 /* empty */
 .empty{text-align:center;padding:34px 18px;color:var(--muted)}
 .empty svg{width:34px;height:34px;stroke:var(--faint);margin-bottom:10px}
-.empty b{display:block;font-family:var(--disp);color:var(--ink);font-size:15px;margin-bottom:3px}
+.empty b{display:block;font-family:var(--disp);color:var(--ink);font-size:15px;margin-bottom:3px}.empty.compact{padding:22px 16px}
 
 /* modal */
 .modal-bg{position:fixed;inset:0;background:rgba(22,26,33,.42);backdrop-filter:blur(2px);display:grid;place-items:center;z-index:50;padding:20px;animation:fade .15s}
@@ -256,7 +256,6 @@ textarea.inp{resize:vertical;min-height:60px}
 .ov-hero{border-radius:18px;box-shadow:var(--shadow)}
 .ov-hero .side{padding:24px 24px 20px}.ov-hero .side .amt{margin-top:6px}.ov-hero .side .sub{margin-top:14px;row-gap:12px}.ov-hero .side .sub>div{min-width:126px}.ov-hero .side .sub .v{margin-top:4px;font-size:15px}
 .reminder{padding:12px 16px;border-radius:16px}.reminder .txt b{font-size:14px}.reminder .txt span{font-size:12px}
-.ov-accounts-card{border-radius:16px;overflow:hidden}.ov-account-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding-bottom:0}.ov-account-item{min-width:0;border:1px solid var(--line);border-radius:14px;padding:13px 14px;background:var(--surface-2)}.ov-account-item .t{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px;line-height:1.25;min-height:30px}.ov-account-item .v{font-weight:700;font-size:18px;margin-top:8px}.ov-account-item .m{font-size:11px;color:var(--faint);margin-top:6px;text-transform:uppercase;letter-spacing:.05em}@media (max-width:900px){.ov-account-strip{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;padding-right:12px;scrollbar-width:none;scroll-snap-type:x proximity}.ov-account-strip::-webkit-scrollbar{display:none}.ov-account-item{flex:0 0 auto;min-width:168px;scroll-snap-align:start}}
 .ov-kpis .stat{border-radius:16px}.ov-kpis-2{grid-template-columns:repeat(2,minmax(0,1fr))}.ov-grid-main,.ov-grid-secondary{gap:16px}.ov-grid-main .card,.ov-grid-secondary .card{border-radius:16px}.ov-grid-main .card-h .fs12,.ov-grid-secondary .card-h .fs12{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em}.forecast-compact .kpi-line{padding:8px 0;border-bottom:1px solid var(--surface-3)}.forecast-compact .kpi-line:last-of-type{border-bottom:none}.forecast-compact .kpi-line span{font-size:12px}.forecast-compact .kpi-line b{font-family:var(--mono);font-size:16px}.forecast-compact .note{display:none}
 .overview-period button{pointer-events:auto}
 .mobile-nav{display:none}
@@ -1001,7 +1000,7 @@ function viewOverview(){
     return '<div class="list-row"><div class="avatar" style="background:'+(d.dir==="in"?'var(--asset-bg)':'var(--liab-bg)')+';color:'+(d.dir==="in"?'var(--asset)':'var(--liab)')+'">'+(d.dir==="in"?'←':'→')+'</div>'+ 
       '<div><div style="font-weight:500">'+esc(d.who)+'</div><div class="fs12 muted">'+(d.dir==="in"?'вернут вам':'вы должны')+' · '+dd.txt+'</div></div>'+ 
       '<div class="spacer"></div><div class="num '+(d.dir==="in"?'blue':'neg')+'" style="font-weight:600">'+fmt(rem,false,debtCurrency(d))+'</div></div>';
-  }).join(""):'<div class="empty" style="padding:20px"><b>Долгов нет</b><span class="fs13">Всё закрыто.</span></div>';
+  }).join(""):'<div class="empty compact"><b>Долгов нет</b><span class="fs13">Всё закрыто.</span></div>';
 
   const gsorted=[...S.goals].sort((a,b)=>(b.saved/b.target)-(a.saved/a.target)).slice(0,3);
   const goalsHtml=gsorted.length? gsorted.map(g=>{
@@ -1009,7 +1008,7 @@ function viewOverview(){
     return '<div style="margin-bottom:13px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span style="font-weight:500">'+esc(g.name)+'</span><span class="mono muted">'+p+'%</span></div>'+ 
       '<div class="prog"><span style="width:'+p+'%;background:var(--goal)"></span></div>'+ 
       '<div class="fs12 muted mono" style="margin-top:4px">'+fmt(g.saved)+' из '+fmt(g.target)+'</div></div>';
-  }).join(""):'<div class="empty" style="padding:16px"><span class="fs13">Целей пока нет.</span></div>';
+  }).join(""):'<div class="empty compact"><span class="fs13">Целей пока нет.</span></div>';
 
   return head("Обзор","Общая картина ваших финансов на сегодня")+
   periodControl+banner+
@@ -1032,15 +1031,6 @@ function viewOverview(){
       '<div><span class="k">Возвращено · '+periodShort+'</span><span class="v">'+fmt(a.contribution)+'</span></div></div>'+ 
     '</div>'+ 
   '</div>'+ 
-  '<div class="card ov-accounts-card" style="margin-bottom:16px"><div class="card-h"><h3>Счета</h3><button class="btn ghost sm" data-act="nav" data-v="accounts">Управлять →</button></div>'+ 
-    '<div class="card-b ov-account-strip">'+
-    (activeAccounts().map(acc=>{const b=accountBalance(acc.id);const used=accUsedCredit(acc.id);
-      return '<div class="clickable ov-account-item" data-act="open-account-tx" data-id="'+acc.id+'">'+
-        '<div class="t">'+acc.emoji+' '+esc(acc.name)+'</div>'+ 
-        '<div class="mono v" style="color:'+(b<0?'var(--liab)':'var(--ink)')+'">'+fmt(b,false,acc.currency)+'</div>'+ 
-        (acc.limit>0?'<div class="m mono">лимит '+fmt(acc.limit,false,acc.currency)+'</div>':'')+
-      '</div>';}).join("")||'<div class="fs13 muted" style="padding:6px 0">Активных счетов пока нет.</div>')+
-    '</div></div>'+ 
   '<div class="stats ov-kpis ov-kpis-2" style="margin-bottom:16px">'+
     statCard("Мне должны",fmt(owedToMe()),S.debts.filter(d=>d.dir==="in"&&debtRemaining(d)>0).length+" активных долга","i-asset",I.debt,'data-act="nav" data-v="debts"')+
     statCard("Я должен",fmt(iOwe()),S.debts.filter(d=>d.dir==="out"&&debtRemaining(d)>0).length+" обязательства","i-liab",I.wallet,'data-act="nav" data-v="debts"')+
@@ -1482,8 +1472,8 @@ function debtCard(d){
 function viewDebts(){
   const inD=S.debts.filter(d=>d.dir==="in");
   const outD=S.debts.filter(d=>d.dir==="out");
-  const colIn=inD.length?inD.map(debtCard).join(""):'<div class="empty" style="padding:26px"><b>Вам никто не должен</b></div>';
-  const colOut=outD.length?outD.map(debtCard).join(""):'<div class="empty" style="padding:26px"><b>У вас нет долгов</b></div>';
+  const colIn=inD.length?inD.map(debtCard).join(""):'<div class="empty compact"><b>Вам никто не должен</b></div>';
+  const colOut=outD.length?outD.map(debtCard).join(""):'<div class="empty compact"><b>У вас нет долгов</b></div>';
   return head("Долги и кредиты","Каждый долг хранится в своей валюте. Общие итоги пересчитываются в "+baseCode()+" по текущим курсам.")+
   '<div style="display:flex;gap:10px;margin-bottom:16px"><button class="btn primary" data-act="add-debt" data-dir="in">'+svg(I.add)+'Мне должны</button><button class="btn" data-act="add-debt" data-dir="out">'+svg(I.add)+'Я должен</button></div>'+
   '<div class="two">'+
@@ -1560,7 +1550,7 @@ function viewForecast(){
     ''+
   '</div></div>'+
   '<div class="card"><div class="card-h"><h3>Плановые движения по долгам</h3></div>'+
-    (debtRows?'<table><thead><tr><th>Контрагент</th><th>Тип</th><th>Срок</th><th class="num">Сумма</th></tr></thead><tbody>'+debtRows+'</tbody></table>':'<div class="empty" style="padding:24px"><span class="fs13">Нет долгов со сроком возврата.</span></div>')+
+    (debtRows?'<table><thead><tr><th>Контрагент</th><th>Тип</th><th>Срок</th><th class="num">Сумма</th></tr></thead><tbody>'+debtRows+'</tbody></table>':'<div class="empty compact"><span class="fs13">Нет долгов со сроком возврата.</span></div>')+
   '</div>';
 }
 
