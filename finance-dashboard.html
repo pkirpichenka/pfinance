@@ -328,6 +328,11 @@ textarea.inp{resize:vertical;min-height:60px}
 .compact-add .compact-save{margin-top:11px;width:100%;border:none;border-radius:13px;padding:13px;font-family:var(--disp);font-weight:600;font-size:14.5px;color:#fff;background:var(--ink);transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}.compact-add .compact-save:active{transform:scale(.98)}.compact-add .compact-save.ready.t-in{background:var(--personal)}.compact-add .compact-save.ready.t-out{background:var(--liab)}.compact-add .compact-save.ready.t-biz{background:var(--biz)}.compact-add .compact-save.ready.t-asset{background:var(--asset)}.compact-add .compact-save.ready.t-goal{background:var(--goal)}.compact-add .compact-save:disabled{opacity:.45}
 .compact-add .compact-bal{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:10px 13px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}.compact-add .compact-bal .l{font-size:11.5px;color:var(--muted)}.compact-add .compact-bal .sync{font-size:10.5px;color:var(--personal);margin-top:2px}.compact-add .compact-bal .v{font-family:var(--mono);font-weight:700;font-size:16px;text-align:right;white-space:nowrap}
 .sync-ok{color:var(--personal)}.sync-busy{color:var(--muted)}.sync-warn{color:var(--biz)}
+.sync-banner{align-items:center;gap:12px;padding:9px 16px;font-size:12.5px;font-weight:600;line-height:1.35;background:rgba(224,49,49,.12);color:var(--liab);border-bottom:1px solid rgba(224,49,49,.25)}
+.sync-banner.is-conflict{background:rgba(214,158,46,.14);color:var(--biz);border-bottom-color:rgba(214,158,46,.3)}
+.sync-banner .sb-txt{flex:1}
+.sync-banner .sb-btn{flex:none;border:none;border-radius:8px;padding:6px 12px;font-weight:700;font-size:12px;cursor:pointer;background:var(--liab);color:#fff}
+.sync-banner.is-conflict .sb-btn{background:var(--biz)}
 .compact-add-more .grp-lbl{font-size:10px;font-family:var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:11px 1px 6px}.compact-add-more .opt{display:flex;align-items:center;gap:10px;padding:10px;border-radius:11px;border:1px solid var(--line);background:var(--surface);margin-bottom:6px;width:100%;text-align:left;color:var(--ink)}.compact-add-more .opt:active{background:var(--surface-2)}.compact-add-more .opt .bar{width:4px;height:24px;border-radius:2px;flex:0 0 auto}.compact-add-more .opt .tt{font-weight:600;font-size:13px;font-family:var(--disp)}.compact-add-more .opt .td{font-size:10.5px;color:var(--muted);margin-top:1px}
 @media (max-width:640px){.compact-add-shell{max-width:none}.compact-add{border:none;box-shadow:none;background:transparent;padding:4px 2px 16px}.compact-add .compact-details .inp{font-size:16px;padding:10px 11px}.compact-add .compact-pad{margin-top:8px}.compact-add .compact-key{padding:11px 0}}
 
@@ -473,15 +478,28 @@ window.PFBackendReady=new Promise(resolve=>{window.__resolvePFBackendReady=resol
         return { error };
       },
       async signOut(){ return await sb.auth.signOut(); },
+      async checkAuth(){
+        const { data:{ user }, error } = await sb.auth.getUser();
+        if(error) return { ok:false, error:error.message||String(error) };
+        return { ok:!!user, id:user?user.id:null };
+      },
       async load(){
         const { data:{ user } } = await sb.auth.getUser();
         if(!user) return null;
-        const { data, error } = await sb.from('app_state').select('data, rev').eq('user_id', user.id).maybeSingle();
-        if(error) throw error;
-        if(!data) return null;
-        const st = data.data;
-        // ревизия из БД (Фаза 2.1) — источник истины; дублируем в meta.rev для клиента
-        if(st && data.rev!=null){ st.meta = st.meta||{}; st.meta.rev = data.rev; }
+        let res = await sb.from('app_state').select('data, rev').eq('user_id', user.id).maybeSingle();
+        if(res.error){
+          const m=(res.error.message||'')+' '+(res.error.details||'');
+          // столбец rev ещё не создан (миграция 2.1 не применена) — читаем только data
+          if(res.error.code==='42703' || /rev/i.test(m)){
+            res = await sb.from('app_state').select('data').eq('user_id', user.id).maybeSingle();
+          }
+        }
+        if(res.error) throw res.error;
+        const row = res.data;
+        if(!row) return null;
+        const st = row.data;
+        // ревизия из БД (Фаза 2.1) — источник истины, если столбец есть
+        if(st && row.rev!=null){ st.meta = st.meta||{}; st.meta.rev = row.rev; }
         return st;
       },
       async save(state){
@@ -544,6 +562,17 @@ function syncLabel(){return SYNC_LABEL[syncState]||'';}
 function updateSyncIndicators(){
   const tone={synced:'ok',saving:'busy',offline:'warn',local:'ok',conflict:'warn'}[syncState]||'';
   document.querySelectorAll('[data-sync-indicator]').forEach(el=>{el.textContent=syncLabel();el.classList.remove('sync-ok','sync-busy','sync-warn');if(tone)el.classList.add('sync-'+tone);});
+  const banner=document.getElementById('sync-banner');
+  if(banner){
+    const show=(syncState==='offline'||syncState==='conflict'||syncState==='local');
+    banner.style.display=show?'flex':'none';
+    banner.classList.toggle('is-conflict',syncState==='conflict'||syncState==='local');
+    const txt=banner.querySelector('.sb-txt');
+    if(txt)txt.textContent=
+      syncState==='conflict' ? 'Данные изменились на другом устройстве. Нажмите «Проверить», чтобы выбрать версию.' :
+      syncState==='local'    ? 'Облако не подключено — данные хранятся только в этом браузере и не синхронизируются. Нажмите «Диагностика».' :
+                               'Изменения не сохранены в облако — не закрывайте вкладку. Нажмите «Диагностика», чтобы найти причину.';
+  }
 }
 function setSyncStatus(s){syncState=s;updateSyncIndicators();}
 const Store={
@@ -578,10 +607,10 @@ const Store={
         // функция не развёрнута — падаем в совместимый путь ниже
       }
       // Совместимый путь (Фаза 2, до применения миграции 2.1): прочитать-сравнить-записать.
-      let remote=null;
+      let remote=null, readOk=true;
       try{ remote=await window.PFBackend.load(); }
-      catch(e){ setSyncStatus('offline'); return; }
-      if(remote!==null && stateRev(remote)>baseRev){
+      catch(e){ readOk=false; }   // проверку пропускаем, но запись всё равно пробуем
+      if(readOk && remote!==null && stateRev(remote)>baseRev){
         setSyncStatus('conflict'); showSyncConflict(remote); return;
       }
       state.meta=state.meta||{}; state.meta.rev=baseRev+1;
@@ -618,6 +647,38 @@ function showSyncConflict(remote){
     '</div>'+
     '<div class="fs12 muted" style="margin-top:10px;line-height:1.5">«Загрузить свежую версию» отменит несохранённые локальные изменения. «Перезаписать» заменит облачную версию вашей — данные с другого устройства будут потеряны. При сомнении сначала скачайте резервную копию в «Настройках».</div>');
 }
+function showDiag(lines,hint){
+  openSheet('Диагностика сохранения',
+    '<div class="fs13" style="line-height:1.7">'+lines.map(esc).join('<br>')+'</div>'+
+    (hint?'<div class="fs12" style="margin-top:12px;line-height:1.5;color:var(--biz)">'+esc(hint)+'</div>':'')+
+    '<div style="display:flex;gap:9px;margin-top:16px"><button class="btn" data-act="export">Скачать резервную копию</button><button class="btn primary" data-act="close-modal">Закрыть</button></div>');
+}
+async function runSyncDiagnostic(){
+  const L=[]; const ok=t=>L.push('✓ '+t), bad=t=>L.push('✗ '+t);
+  if(!window.PFBackend){
+    showDiag(['✗ Облако не подключено (библиотека Supabase не загрузилась).'],
+      'Скорее всего, при открытии не было интернета и библиотека не загрузилась — данные хранятся только в этом браузере. Переоткройте приложение при стабильной сети. Перед этим скачайте резервную копию.');
+    return;
+  }
+  ok('Библиотека облака загружена');
+  let auth=null;
+  try{ auth=await window.PFBackend.checkAuth(); }catch(e){ auth={ok:false,error:e&&e.message}; }
+  if(!auth||!auth.ok){ bad('Нет активной сессии'+(auth&&auth.error?': '+auth.error:'')); showDiag(L,'Сессия истекла — данные не сохраняются. Скачайте резервную копию, затем выйдите и войдите снова.'); return; }
+  ok('Сессия активна');
+  try{ const r=await window.PFBackend.load(); ok('Чтение из облака работает'+(r?' (запись найдена)':' (записи пока нет)')); }
+  catch(e){ bad('Чтение не работает: '+errText(e)); }
+  try{
+    if(window.PFBackend.saveAtomic){
+      try{ const res=await window.PFBackend.saveAtomic(S,baseRev); if(res&&res.ok){baseRev=res.rev;S.meta=S.meta||{};S.meta.rev=res.rev;ok('Запись через атомарную функцию работает');} else {bad('Запись вернула конфликт (кто-то изменил данные) — откройте «Проверить»');} }
+      catch(e){ if(e&&e.__noRpc){ await window.PFBackend.save(S); ok('Запись работает (функция 2.1 не установлена — обычный режим)'); } else { throw e; } }
+    } else { await window.PFBackend.save(S); ok('Запись работает'); }
+    window.__mem=JSON.stringify(S); syncDirty=false; setSyncStatus('synced');
+    L.push(''); L.push('Текущие данные только что сохранены в облако.');
+  }catch(e){ bad('Запись НЕ работает: '+errText(e)); setSyncStatus('offline');
+    L.push(''); L.push('Это и есть причина потери данных — записи не доходят до облака.'); }
+  showDiag(L,null);
+}
+function errText(e){ if(!e)return'неизвестная ошибка'; return [e.message,e.code&&('код '+e.code),e.details,e.hint].filter(Boolean).join(' · ')||String(e); }
 
 /* =========================================================
    ДАННЫЕ ПО УМОЛЧАНИЮ (чистая база в BYN)
@@ -1040,6 +1101,7 @@ function render(){
 
   app.innerHTML=
   '<div class="mobile-top"><div class="mark">'+esc(sym(baseCode()))+'</div><div class="ttl">'+esc(curTitle)+'</div><div class="spacer"></div>'+themeButtonHtml()+'</div>'+
+  '<div id="sync-banner" class="sync-banner" style="display:none"><span class="sb-txt"></span><button class="sb-btn" data-act="sync-diagnose">Диагностика</button></div>'+
   '<div class="app">'+
     '<aside class="nav">'+
       '<div class="brand"><div class="mark">'+esc(sym(baseCode()))+'</div><div><b>Финансы</b><small>личный контроль</small></div>'+themeButtonHtml()+'</div>'+
@@ -1065,6 +1127,7 @@ function render(){
   else if(v==="settings")m.innerHTML=viewSettings();
   m.scrollTop=0;
   window.scrollTo(0,0);
+  updateSyncIndicators();
 }
 
 /* =========================================================
@@ -1753,7 +1816,7 @@ function viewSettings(){
   '<div class="card" style="margin-top:0;margin-bottom:16px"><div class="card-h"><h3>Частые операции</h3></div><div class="card-b">'+presetRows+'<button class="btn sm" style="margin-top:12px" data-act="save-form-preset">Сохранить текущую форму как пресет</button><div class="fs12 muted" style="margin-top:8px">Используется последняя настроенная форма в разделе «Внести операцию».</div></div></div>'+
   '<div class="card" style="margin-top:0;margin-bottom:16px"><div class="card-h"><h3>Диагностика</h3></div><div class="card-b">'+diagnosticHtml+'</div></div>'+
   '<div class="card" style="margin-top:0;margin-bottom:16px"><div class="card-h"><h3>Синхронизация</h3></div><div class="card-b">'+
-    '<div class="list-row" style="border-bottom:none;padding:2px 0"><div style="flex:1"><b class="fs13 sync" data-sync-indicator>'+syncLabel()+'</b><div class="fs12 muted">ревизия '+baseRev+(window.PFBackend?'':' · облако не подключено, данные в этом браузере')+'</div></div><button class="btn sm" data-act="sync-check">Проверить</button></div>'+
+    '<div class="list-row" style="border-bottom:none;padding:2px 0"><div style="flex:1"><b class="fs13 sync" data-sync-indicator>'+syncLabel()+'</b><div class="fs12 muted">ревизия '+baseRev+(window.PFBackend?'':' · облако не подключено, данные в этом браузере')+'</div></div><button class="btn sm" data-act="sync-check">Проверить</button> <button class="btn sm" data-act="sync-diagnose">Диагностика</button></div>'+
     '<div class="fs12 muted" style="margin-top:8px;line-height:1.5">Если приложение открыто на нескольких устройствах, при возврате во вкладку данные подтягиваются автоматически. Если и здесь, и там были правки одновременно, появится окно с выбором, какую версию оставить — молча ничего не затирается.</div>'+
   '</div></div>'+
   '<div class="card" style="margin-top:0"><div class="card-h"><h3>Данные</h3></div><div class="card-b">'+
@@ -2156,6 +2219,7 @@ document.addEventListener("click",e=>{
   if(act==="export"){downloadJSON();return;}
   if(act==="import"){importJSON();return;}
   if(act==="sync-check"){toast("Проверяю синхронизацию…");reconcileFromRemote().then(()=>{if(syncState!=="conflict")toast(syncState==="synced"?"Данные актуальны":"Проверка завершена");});return;}
+  if(act==="sync-diagnose"){runSyncDiagnostic();return;}
   if(act==="sync-reload"){const r=window.__syncConflictRemote;closeModal();if(r)applyRemoteState(r,false);return;}
   if(act==="sync-overwrite"){const r=window.__syncConflictRemote;closeModal();if(!r||!window.PFBackend)return;baseRev=stateRev(r);syncDirty=true;Store.save(S).then(()=>{if(syncState==="synced")toast("Облако перезаписано вашей версией");});return;}
   if(act==="reset"){openModal("Начать с чистого листа?",'<p style="margin:0;color:var(--ink-2)">Все операции, долги и цели будут удалены. Балансы и лимиты счетов обнулятся. Можно оставить структуру — счета, точки бизнеса, валюты и категории.</p><label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13.5px"><input type="checkbox" id="keep-biz" checked> Оставить счета, точки бизнеса, валюты и категории</label>',
