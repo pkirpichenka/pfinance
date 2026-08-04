@@ -1362,7 +1362,7 @@ function viewAccounts(){
 const TYPES=[
   {id:"in",group:"personal",t:"Доход",d:"Личные деньги пришли",bar:"var(--personal)"},
   {id:"out",group:"personal",t:"Расход",d:"Личная трата",bar:"var(--liab)"},
-  {id:"transfer",group:"transfer",t:"Перевод между счетами",d:"Внутри одного владельца",bar:"var(--asset)"},
+  {id:"transfer",group:"transfer",t:"Перемещение между счетами",d:"Между личными или счетами бизнеса — тип определится сам",bar:"var(--asset)"},
   {id:"entity_transfer",group:"transfer",t:"Между ИП и ООО",d:"Займ, взнос или иное перемещение",bar:"var(--goal)"},
   {id:"cash_transfer",group:"transfer",t:"Инкассация",d:"Наличные студии ↔ её банковский счёт",bar:"var(--asset)"},
   {id:"biz_income",group:"business",t:"Доход бизнеса",d:"Выручка на счёт бизнеса",bar:"var(--personal)"},
@@ -1389,7 +1389,7 @@ function compactQuickTypeHtml(type){
     '<button type="button" class="t-more '+(!['in','out','biz_income'].includes(type)?'on':'')+'" data-act="open-add-types">Ещё</button>';
 }
 function compactMoreTypesHtml(){
-  const groups=[['Переводы',['transfer','entity_transfer','cash_transfer']],['Бизнес',['draw','contribution','biz_expense','personal_biz_expense']]];
+  const groups=[['Переводы',['transfer','cash_transfer']],['Бизнес',['draw','contribution','biz_expense','personal_biz_expense']]];
   return '<div class="compact-add-more">'+groups.map(([label,ids])=>'<div class="grp-lbl">'+label+'</div>'+ids.map(id=>{const t=compactType(id);return '<button type="button" class="opt" data-act="pick-type" data-t="'+id+'"><span class="bar" style="background:'+t.bar+'"></span><div><div class="tt">'+esc(t.t)+'</div><div class="td">'+esc(t.d)+'</div></div></button>';}).join('')).join('')+'</div>';
 }
 function compactNumpadHtml(){return ['1','2','3','4','5','6','7','8','9','.','0','back'].map(k=>'<button type="button" class="compact-key" data-act="amount-key" data-k="'+k+'">'+(k==='back'?'⌫':k)+'</button>').join('');}
@@ -1602,14 +1602,14 @@ function refreshAddForm(skipLastUsed=false){
   if(usesBizAccount)document.getElementById('f-biz-acc-lbl').textContent=baccLbl[type]||'Счёт бизнеса';
   if(usesBizAccount){updateBusinessAccountOptions();setSelectValue('f-biz-acc',desired('f-biz-acc','businessAccount'));}
   if(isCashTransfer){updateCashTransferAccounts();setSelectValue('f-from-acc',desired('f-from-acc','account'));setSelectValue('f-to-acc',desired('f-to-acc','businessAccount'));ensureTransferAccounts();updateTransferPreview();}
-  else if(isAccountMove){setSelectValue('f-to-acc',desired('f-to-acc','businessAccount'));ensureTransferAccounts();}
+  else if(isAccountMove){fillMoveAccounts();setSelectValue('f-from-acc',desired('f-from-acc','account'));setSelectValue('f-to-acc',desired('f-to-acc','businessAccount'));ensureTransferAccounts();updateTransferPreview();}
   if(isPbe){renderPbeAllocations();updatePbeSettlement();updatePbeSummary();}
   const catSel=document.getElementById('f-cat');let cats=[];
   if(type==='in')cats=S.categories.in;else if(type==='out')cats=S.categories.out;else if(type==='draw')cats=['Вывод собственнику','Возмещение личных расходов'];else if(type==='contribution')cats=['Взнос собственника'];else if(type==='biz_income')cats=S.categories.bizIn;else if(type==='entity_transfer')cats=['Взнос собственника','Выдача займа','Возврат займа','Оплата по договору','Другое перемещение'];else if(type==='cash_transfer')cats=['Инкассация'];else if(type==='personal_biz_expense')cats=S.categories.bizOut;else if(type!=='transfer')cats=S.categories.bizOut;
   catSel.innerHTML=cats.map(c=>'<option>'+esc(c)+'</option>').join('');setSelectValue('f-cat',desired('f-cat','cat'));
   const ex={
     in:'Личный счёт увеличится. Это личный доход.',out:'Личный счёт уменьшится. Это личный расход.',
-    transfer:'Разрешены переводы между личными счетами или между банковскими счетами одного юрлица.',
+    transfer:'Выберите откуда и куда — приложение само определит: перевод между вашими счетами, между счетами одного юрлица или между банковскими счетами разных юрлиц. На прибыль не влияет.',
     entity_transfer:'Деньги переместятся между банковскими счетами разных юрлиц. Операция не попадёт в прибыль; назначение сохранится отдельно.',
     cash_transfer:'Перемещение между наличными выбранной студии и её банковским счётом. Прибыль не изменится.',
     draw:'Деньги спишутся из выбранного канала бизнеса и поступят на личный счёт. Это не расход бизнеса и не личный доход в обычной аналитике.',
@@ -1622,15 +1622,53 @@ function refreshAddForm(skipLastUsed=false){
 }
 function ensureTransferAccounts(){const from=document.getElementById('f-from-acc'),to=document.getElementById('f-to-acc');if(!from||!to)return;if(from.value===to.value&&to.options.length>1)to.selectedIndex=from.selectedIndex===0?1:0;}
 function sameAccountOwner(a,b){if(!a||!b||isCashPoolAccount(a)||isCashPoolAccount(b))return false;if(isPersonalAccount(a)&&isPersonalAccount(b))return true;return isBankBusinessAccount(a)&&isBankBusinessAccount(b)&&a.legalEntityId&&a.legalEntityId===b.legalEntityId;}
+/* Автоопределение типа перемещения по паре счетов (совпадает с прежними правилами валидации). */
+let __resolvedMove=null;
+function detectTransferType(from,to){
+  if(!from||!to||from.id===to.id)return null;
+  if(isCashPoolAccount(from)||isCashPoolAccount(to)){
+    return (isCashPoolAccount(from)!==isCashPoolAccount(to) && (isBankBusinessAccount(from)||isBankBusinessAccount(to)))?'cash_transfer':null;
+  }
+  if(isBankBusinessAccount(from)&&isBankBusinessAccount(to)&&from.legalEntityId!==to.legalEntityId)return 'entity_transfer';
+  if(sameAccountOwner(from,to))return 'transfer';
+  return null;
+}
+function moveAccounts(){return activeAccounts().filter(a=>!isCashPoolAccount(a));}
+function fillMoveAccounts(){const from=document.getElementById('f-from-acc'),to=document.getElementById('f-to-acc');if(!from||!to)return;const html=selectOptions(moveAccounts(),'Нет подходящих счетов');from.innerHTML=html;to.innerHTML=html;}
 function transferAmounts(){const from=accById(mval('f-from-acc')),to=accById(mval('f-to-acc')),amount=Number(mval('f-amount'))||0;if(!from||!to||from.id===to.id||amount<=0)return {from,to,amount,toAmount:0};const toAmount=from.currency===to.currency?amount:toBase(amount,from.currency)/rate(to.currency);return {from,to,amount,toAmount};}
 function updateTransferPreview(){
   const box=document.getElementById('f-transfer-result');if(!box)return;const {from,to,amount,toAmount}=transferAmounts();
+  const type=document.getElementById('f-type')?.value||'transfer';
+  const catWrap=document.getElementById('f-cat-wrap');
+  // Единое «Перемещение» (тип transfer/entity_transfer): определяем реальный тип по паре счетов.
+  if(type==='transfer'||type==='entity_transfer'){
+    __resolvedMove=null;
+    if(moveAccounts().length<2){box.textContent='Нужны минимум два счёта: личные или банковские счета бизнеса.';if(catWrap)catWrap.classList.add('hidden');return;}
+    if(!from||!to){box.textContent='Выберите счёт списания и счёт зачисления.';if(catWrap)catWrap.classList.add('hidden');return;}
+    if(from.id===to.id){box.textContent='Счета должны отличаться.';if(catWrap)catWrap.classList.add('hidden');return;}
+    const det=detectTransferType(from,to);
+    if(det!=='transfer'&&det!=='entity_transfer'){
+      box.textContent='Так перемещать нельзя. Между личным и бизнес-счётом — это «Вывод» или «Взнос»; наличные студии ↔ её счёт — «Инкассация».';
+      if(catWrap)catWrap.classList.add('hidden');return;
+    }
+    __resolvedMove=det;
+    if(catWrap){
+      catWrap.classList.toggle('hidden',det!=='entity_transfer');
+      const sel=document.getElementById('f-cat');
+      if(det==='entity_transfer'&&sel&&sel.dataset.mode!=='entity'){
+        sel.innerHTML=['Взнос собственника','Выдача займа','Возврат займа','Оплата по договору','Другое перемещение'].map(c=>'<option>'+esc(c)+'</option>').join('');
+        sel.dataset.mode='entity';
+      } else if(det!=='entity_transfer'&&sel){ sel.dataset.mode=''; }
+    }
+    const kind=det==='entity_transfer'?'Между юрлицами':'Перевод между счетами';
+    if(amount<=0){box.innerHTML='<b>Определено:</b> '+esc(kind).toLowerCase()+'. Введите сумму.';return;}
+    box.innerHTML='<b>'+esc(kind)+'.</b> Со счёта <b>'+esc(from.name)+'</b> спишется <span class="mono">'+fmt(amount,false,from.currency)+'</span>; на <b>'+esc(to.name)+'</b> зачислится <span class="mono">'+fmt(toAmount,false,to.currency)+'</span>.';
+    return;
+  }
+  // Инкассация (cash_transfer) — прежний ведомый поток.
   if(activeAccounts().length<2){box.textContent='Для перемещения нужны минимум два активных счёта.';return;}
   if(!from||!to){box.textContent='Выберите счёт списания и счёт зачисления.';return;}
   if(from.id===to.id){box.textContent='Счета должны отличаться.';return;}
-  const type=document.getElementById('f-type')?.value||'transfer';
-  if(type==='transfer'&&!sameAccountOwner(from,to)){box.textContent='Обычный перевод возможен только между личными счетами или банковскими счетами одного юрлица.';return;}
-  if(type==='entity_transfer'&&(!isBankBusinessAccount(from)||!isBankBusinessAccount(to)||from.legalEntityId===to.legalEntityId)){box.textContent='Для этой операции выберите банковские счета двух разных юридических лиц.';return;}
   if(type==='cash_transfer'){
     const b=bizById(mval('f-biz')),valid=b&&accountAvailableForBiz(from,b,isCashPoolAccount(from)?'cash':'bank')&&accountAvailableForBiz(to,b,isCashPoolAccount(to)?'cash':'bank');
     if(!valid||isCashPoolAccount(from)===isCashPoolAccount(to)){box.textContent='Выберите общую кассу и банковский счёт выбранной студии.';return;}
@@ -2362,15 +2400,21 @@ function saveTx(){
   if(type==="transfer"||type==="entity_transfer"||type==="cash_transfer"){
     const {from,to,toAmount}=transferAmounts();
     if(!from||!to||from.archived||to.archived||from.id===to.id){toast("Выберите два разных активных счёта");return;}
-    if(type==="transfer"&&!sameAccountOwner(from,to)){toast("Обычный перевод возможен только внутри одного владельца");return;}
-    if(type==="entity_transfer"&&(!isBankBusinessAccount(from)||!isBankBusinessAccount(to)||from.legalEntityId===to.legalEntityId)){toast("Выберите банковские счета двух разных юридических лиц");return;}
+    // «Перемещение» (transfer/entity_transfer) — определяем реальный тип по паре счетов
+    let realType=type;
+    if(type==="transfer"||type==="entity_transfer"){
+      realType=detectTransferType(from,to);
+      if(realType!=="transfer"&&realType!=="entity_transfer"){toast("Так перемещать нельзя: между личным и бизнес-счётом это «Вывод»/«Взнос», а наличные студии — «Инкассация»");return;}
+    }
+    if(realType==="transfer"&&!sameAccountOwner(from,to)){toast("Обычный перевод возможен только внутри одного владельца");return;}
+    if(realType==="entity_transfer"&&(!isBankBusinessAccount(from)||!isBankBusinessAccount(to)||from.legalEntityId===to.legalEntityId)){toast("Выберите банковские счета двух разных юридических лиц");return;}
     let biz=null;
-    if(type==="cash_transfer"){
+    if(realType==="cash_transfer"){
       biz=bizById(mval("f-biz"));
       const valid=biz&&accountAvailableForBiz(from,biz,isCashPoolAccount(from)?'cash':'bank')&&accountAvailableForBiz(to,biz,isCashPoolAccount(to)?'cash':'bank');
       if(!valid||isCashPoolAccount(from)===isCashPoolAccount(to)){toast("Выберите общую кассу и банковский счёт выбранной студии");return;}
     }
-    const t={id:uid(),type,biz:biz?.id,fromAccount:from.id,toAccount:to.id,amount,toAmount,cat:type==="transfer"?"Перевод между счетами":type==="cash_transfer"?"Инкассация":mval("f-cat"),date,note,rateFrom:rate(from.currency),rateTo:rate(to.currency)};
+    const t={id:uid(),type:realType,biz:biz?.id,fromAccount:from.id,toAccount:to.id,amount,toAmount,cat:realType==="transfer"?"Перевод между счетами":realType==="cash_transfer"?"Инкассация":mval("f-cat"),date,note,rateFrom:rate(from.currency),rateTo:rate(to.currency)};
     haptic(16);pulseCompactAmount();S.tx.push(t);completeSavedTx(t,"Перемещение сохранено · "+fmt(amount,false,from.currency),saveCtx);return;
   }
   if(type==="personal_biz_expense"){
