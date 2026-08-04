@@ -524,6 +524,32 @@ window.PFBackendReady=new Promise(resolve=>{window.__resolvePFBackendReady=resol
           throw error;
         }
         return data; // { ok:boolean, rev:number }
+      },
+      // --- Облачные автобэкапы (Фаза надёжности). Требуют таблицы pf_backups
+      //     (см. handoff/08-SUPABASE-MIGRATION-BACKUPS.sql). Если таблицы нет —
+      //     методы бросают {__noTable:true}, и клиент тихо отключает облачные копии. ---
+      async saveBackup(state, origin){
+        const { data:{ user } } = await sb.auth.getUser();
+        if(!user) throw new Error('not authenticated');
+        const { error } = await sb.from('pf_backups').insert({ user_id:user.id, data:state, origin:origin||'auto' });
+        if(error){ if(error.code==='42P01' || /pf_backups/i.test((error.message||'')+(error.details||''))) throw {__noTable:true}; throw error; }
+      },
+      async listBackups(){
+        const { data:{ user } } = await sb.auth.getUser();
+        if(!user) return [];
+        const { data, error } = await sb.from('pf_backups').select('id, created_at, origin').eq('user_id', user.id).order('created_at',{ascending:false}).limit(30);
+        if(error){ if(error.code==='42P01') return []; throw error; }
+        return data||[];
+      },
+      async getBackup(id){
+        const { data, error } = await sb.from('pf_backups').select('data').eq('id', id).maybeSingle();
+        if(error) throw error; return data?data.data:null;
+      },
+      async pruneBackups(keep){
+        const { data:{ user } } = await sb.auth.getUser(); if(!user) return;
+        const { data, error } = await sb.from('pf_backups').select('id').eq('user_id', user.id).order('created_at',{ascending:false});
+        if(error) return;
+        if(data && data.length>keep){ const old=data.slice(keep).map(r=>r.id); await sb.from('pf_backups').delete().in('id', old); }
       }
     };
 
@@ -548,6 +574,59 @@ window.PFBackendReady=new Promise(resolve=>{window.__resolvePFBackendReady=resol
    ХРАНИЛИЩЕ (Supabase с деградацией в память)
    ========================================================= */
 const KEY="pf:state:v3";
+/* --- Локальный кэш и автобэкапы в IndexedDB (слой надёжности) --- */
+const IDB=(function(){
+  const DBN='pfinance', VER=1; let _db=null;
+  function open(){ return new Promise((res,rej)=>{ if(_db)return res(_db); if(!window.indexedDB)return rej(new Error('no-idb'));
+    const r=indexedDB.open(DBN,VER);
+    r.onupgradeneeded=()=>{ const db=r.result;
+      if(!db.objectStoreNames.contains('kv'))db.createObjectStore('kv');
+      if(!db.objectStoreNames.contains('backups'))db.createObjectStore('backups',{keyPath:'ts'}); };
+    r.onsuccess=()=>{_db=r.result;res(_db);}; r.onerror=()=>rej(r.error); }); }
+  function req(p){ return new Promise((res,rej)=>{ p.onsuccess=()=>res(p.result); p.onerror=()=>rej(p.error); }); }
+  async function store(name,mode){ const db=await open(); return db.transaction(name,mode).objectStore(name); }
+  return {
+    async getKV(k){ try{ return await req((await store('kv','readonly')).get(k)); }catch(_){ return null; } },
+    async setKV(k,v){ try{ await req((await store('kv','readwrite')).put(v,k)); return true; }catch(_){ return false; } },
+    async addBackup(obj){ try{ await req((await store('backups','readwrite')).put(obj)); return true; }catch(_){ return false; } },
+    async allBackups(){ try{ const a=await req((await store('backups','readonly')).getAll()); return a||[]; }catch(_){ return []; } },
+    async delBackup(ts){ try{ await req((await store('backups','readwrite')).delete(ts)); return true; }catch(_){ return false; } }
+  };
+})();
+async function idbPutCurrent(state,rev,synced){ return IDB.setKV('current',{data:state,baseRev:rev,synced:!!synced,ts:Date.now()}); }
+
+/* --- Автобэкапы: локально (IndexedDB) + облако (Supabase pf_backups) --- */
+const BACKUP_KEEP=7, BACKUP_MIN_INTERVAL=20*3600*1000;
+let __cloudBackupsOff=false;
+async function makeBackup(origin){
+  const snap=JSON.parse(JSON.stringify(S)); const ts=Date.now();
+  // локально
+  await IDB.addBackup({ts,data:snap,origin:origin||'auto'});
+  const list=(await IDB.allBackups()).sort((a,b)=>b.ts-a.ts);
+  for(const old of list.slice(BACKUP_KEEP)) await IDB.delBackup(old.ts);
+  // облако (best-effort, отключается если нет таблицы)
+  if(window.PFBackend&&window.PFBackend.saveBackup&&!__cloudBackupsOff){
+    try{ await window.PFBackend.saveBackup(snap,origin||'auto'); await window.PFBackend.pruneBackups(BACKUP_KEEP); }
+    catch(e){ if(e&&e.__noTable)__cloudBackupsOff=true; }
+  }
+  try{ localStorage.setItem('pf:lastBackup',String(ts)); }catch(_){}
+}
+async function maybeAutoBackup(){
+  let last=0; try{ last=Number(localStorage.getItem('pf:lastBackup'))||0; }catch(_){}
+  if(Date.now()-last>=BACKUP_MIN_INTERVAL){ try{ await makeBackup('auto'); }catch(_){} }
+}
+function fmtBackupDate(ts){ try{ return new Date(ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }catch(_){ return String(ts); } }
+async function openBackups(){
+  const locals=(await IDB.allBackups()).map(b=>({src:'local',id:b.ts,ts:b.ts,origin:b.origin||'auto'}));
+  let clouds=[];
+  if(window.PFBackend&&window.PFBackend.listBackups){ try{ clouds=(await window.PFBackend.listBackups()).map(b=>({src:'cloud',id:b.id,ts:new Date(b.created_at).getTime(),origin:b.origin||'auto'})); }catch(_){} }
+  const all=locals.concat(clouds).sort((a,b)=>b.ts-a.ts);
+  window.__backups=all;
+  if(!all.length){ openSheet('Резервные копии','<div class="fs13 muted">Копий пока нет. Они создаются автоматически (не чаще раза в сутки) или можно нажать «Сделать копию сейчас».</div>'); return; }
+  const rows=all.map((b,i)=>'<div class="list-row"><div style="flex:1"><b class="fs13">'+fmtBackupDate(b.ts)+'</b><div class="fs12 muted">'+(b.src==='cloud'?'облако':'этот браузер')+((''+b.origin).indexOf('fork')>=0?' · офлайн-версия':((''+b.origin).indexOf('manual')>=0?' · вручную':''))+'</div></div><button class="btn sm" data-act="backup-restore" data-i="'+i+'">Восстановить</button></div>').join('');
+  openSheet('Резервные копии', rows+'<div class="fs12 muted" style="margin-top:10px;line-height:1.5">Восстановление заменит текущие данные выбранной копией. Перед этим можно скачать резервную копию через «Данные».</div>');
+}
+
 /* --- Синхронизация и защита от затирания (Фаза 2) ---
    Ревизия состояния хранится ВНУТРИ блоба (meta.rev) — схему таблицы Supabase
    менять не нужно. Перед облачной записью проверяем, не ушла ли удалённая
@@ -577,14 +656,32 @@ function updateSyncIndicators(){
 function setSyncStatus(s){syncState=s;updateSyncIndicators();}
 const Store={
   async load(){
-    try{ if(window.PFBackend){ const r=await window.PFBackend.load(); if(r) return r; } }
-    catch(e){ /* оффлайн/пауза — уходим в память */ }
-    try{ if(window.__mem) return JSON.parse(window.__mem); }catch(e){}
-    return null;
+    let cloud=null;
+    try{ if(window.PFBackend){ cloud=await window.PFBackend.load(); } }catch(e){}
+    let local=null;
+    try{ local=await IDB.getKV('current'); }catch(_){}
+    if(!local){ try{ if(window.__mem){ const m=JSON.parse(window.__mem); local={data:m,baseRev:stateRev(m),synced:true}; } }catch(_){} }
+    if(cloud&&local){
+      const cloudRev=stateRev(cloud);
+      if(local.synced===false){
+        if(cloudRev>(local.baseRev||0)){
+          // развилка: облако ушло вперёд И есть локальные несохранённые правки —
+          // облако делаем живым, локальную версию прячем в бэкапы (не теряем).
+          try{ await IDB.addBackup({ts:Date.now(),data:local.data,origin:'unsynced-fork'}); }catch(_){}
+          return {state:cloud,baseRev:cloudRev,dirty:false,fork:true};
+        }
+        return {state:local.data,baseRev:(local.baseRev||0),dirty:true}; // офлайн-правки новее
+      }
+      return {state:cloud,baseRev:cloudRev,dirty:false};
+    }
+    if(cloud) return {state:cloud,baseRev:stateRev(cloud),dirty:false};
+    if(local) return {state:local.data,baseRev:(local.baseRev||0),dirty:(local.synced===false)};
+    return {state:null,baseRev:0,dirty:false};
   },
   async save(state){
     window.__mem=JSON.stringify(state);
-    if(!window.PFBackend){ syncDirty=false; setSyncStatus('local'); return; }
+    await idbPutCurrent(state,baseRev,false);   // durable локальный кэш (ещё не подтверждён облаком)
+    if(!window.PFBackend){ await idbPutCurrent(state,baseRev,true); syncDirty=false; setSyncStatus('local'); return; }
     if(_saveInFlight){ _savePending=true; return; }
     _saveInFlight=true; setSyncStatus('saving');
     try{
@@ -597,6 +694,7 @@ const Store={
           if(res&&res.ok){
             baseRev=res.rev; state.meta=state.meta||{}; state.meta.rev=res.rev;
             window.__mem=JSON.stringify(state); syncDirty=false; setSyncStatus('synced');
+            idbPutCurrent(state,baseRev,true);
           }else{
             setSyncStatus('conflict');
             let remote=null; try{ remote=await window.PFBackend.load(); }catch(_){}
@@ -617,6 +715,7 @@ const Store={
       await window.PFBackend.save(state);
       baseRev=state.meta.rev; window.__mem=JSON.stringify(state);
       syncDirty=false; setSyncStatus('synced');
+      idbPutCurrent(state,baseRev,true);
     }catch(e){ setSyncStatus('offline'); }
     finally{
       _saveInFlight=false;
@@ -1819,6 +1918,13 @@ function viewSettings(){
     '<div class="list-row" style="border-bottom:none;padding:2px 0"><div style="flex:1"><b class="fs13 sync" data-sync-indicator>'+syncLabel()+'</b><div class="fs12 muted">ревизия '+baseRev+(window.PFBackend?'':' · облако не подключено, данные в этом браузере')+'</div></div><button class="btn sm" data-act="sync-check">Проверить</button> <button class="btn sm" data-act="sync-diagnose">Диагностика</button></div>'+
     '<div class="fs12 muted" style="margin-top:8px;line-height:1.5">Если приложение открыто на нескольких устройствах, при возврате во вкладку данные подтягиваются автоматически. Если и здесь, и там были правки одновременно, появится окно с выбором, какую версию оставить — молча ничего не затирается.</div>'+
   '</div></div>'+
+  '<div class="card" style="margin-top:0;margin-bottom:16px"><div class="card-h"><h3>Резервные копии</h3></div><div class="card-b">'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+      '<button class="btn" data-act="backup-now">Сделать копию сейчас</button>'+
+      '<button class="btn" data-act="backups-open">Восстановить из копии…</button>'+
+    '</div>'+
+    '<div class="fs12 muted" style="margin-top:10px;line-height:1.5">Копии создаются автоматически (не чаще раза в сутки) и хранятся локально в этом браузере'+(window.PFBackend?' и в облаке':'')+'. Хранятся последние '+BACKUP_KEEP+'. Восстановление заменит текущие данные.</div>'+
+  '</div></div>'+
   '<div class="card" style="margin-top:0"><div class="card-h"><h3>Данные</h3></div><div class="card-b">'+
     '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
       '<button class="btn" data-act="export">Скачать резервную копию (.json)</button>'+
@@ -2220,6 +2326,9 @@ document.addEventListener("click",e=>{
   if(act==="import"){importJSON();return;}
   if(act==="sync-check"){toast("Проверяю синхронизацию…");reconcileFromRemote().then(()=>{if(syncState!=="conflict")toast(syncState==="synced"?"Данные актуальны":"Проверка завершена");});return;}
   if(act==="sync-diagnose"){runSyncDiagnostic();return;}
+  if(act==="backup-now"){makeBackup('manual').then(()=>toast('Резервная копия создана')).catch(()=>toast('Не удалось создать копию'));return;}
+  if(act==="backups-open"){openBackups();return;}
+  if(act==="backup-restore"){const i=+el.dataset.i;const b=(window.__backups||[])[i];if(!b)return;(async()=>{let data=null;if(b.src==='local'){const all=await IDB.allBackups();const rec=all.find(x=>x.ts===b.id);data=rec&&rec.data;}else{try{data=await window.PFBackend.getBackup(b.id);}catch(_){}}if(!data){toast('Не удалось загрузить копию');return;}if(!confirm('Восстановить копию от '+fmtBackupDate(b.ts)+'? Текущие данные будут заменены.'))return;closeModal();S=data;ensureBusinessModel();ensureUxState();S.ui={view:"overview",txFilter:"all",txPeriod:"all",txAccount:null,txMonth:null,overviewPeriod:"month"};applyTheme();persist();render();toast('Данные восстановлены из копии');})();return;}
   if(act==="sync-reload"){const r=window.__syncConflictRemote;closeModal();if(r)applyRemoteState(r,false);return;}
   if(act==="sync-overwrite"){const r=window.__syncConflictRemote;closeModal();if(!r||!window.PFBackend)return;baseRev=stateRev(r);syncDirty=true;Store.save(S).then(()=>{if(syncState==="synced")toast("Облако перезаписано вашей версией");});return;}
   if(act==="reset"){openModal("Начать с чистого листа?",'<p style="margin:0;color:var(--ink-2)">Все операции, долги и цели будут удалены. Балансы и лимиты счетов обнулятся. Можно оставить структуру — счета, точки бизнеса, валюты и категории.</p><label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13.5px"><input type="checkbox" id="keep-biz" checked> Оставить счета, точки бизнеса, валюты и категории</label>',
@@ -2519,10 +2628,13 @@ async function init(){
     }
     if(!window.PFBackend.user){renderLogin();return;}
   }
-  const saved=await Store.load();
+  const loaded=await Store.load();
   if(run!==initRun)return;
+  const saved=loaded.state;
   S=saved||seed();
-  baseRev=stateRev(saved); syncDirty=false; setSyncStatus(window.PFBackend?'synced':'local');
+  baseRev=loaded.baseRev||stateRev(saved); syncDirty=false; setSyncStatus(window.PFBackend?'synced':'local');
+  if(loaded.fork)setTimeout(()=>toast('Найдены правки с другого устройства — ваша офлайн-версия сохранена в «Резервные копии»'),400);
+  if(loaded.dirty){ syncDirty=true; persist(); }   // досинхронизировать несохранённые офлайн-правки
   if(ensureBusinessModel())persist();
   if(ensureUxState())persist();applyTheme();
   // Однократный переход с прежней RUB-демо-базы: полностью очищаем данные и начинаем в BYN.
@@ -2562,7 +2674,11 @@ async function init(){
   render();
   if(S.ui.view==="add")setTimeout(refreshAddForm,0);
   updateRatesFromNBRB().then(ok=>{if(ok&&S){render();if(S.ui.view==="add")setTimeout(refreshAddForm,0);}});
+  setTimeout(maybeAutoBackup,1500);
 }
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reconcileFromRemote();});
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){ reconcileFromRemote(); }
+  else { maybeAutoBackup(); }
+});
 init();
 </script>
