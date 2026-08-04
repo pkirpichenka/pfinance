@@ -139,11 +139,11 @@ h1,h2,h3,h4{font-family:var(--disp);margin:0;font-weight:600;letter-spacing:-.01
 .side .lbl .tag{width:8px;height:8px;border-radius:2px}
 .personal .tag{background:var(--personal)}.biz .tag{background:var(--biz)}
 .side .hint{display:none}
-.side .amt{font-family:var(--mono);font-weight:700;font-size:34px;letter-spacing:-.03em;line-height:1}
+.side .amt{font-family:var(--mono);font-weight:700;font-size:clamp(30px,8vw,42px);letter-spacing:-.03em;line-height:1}
 .personal .amt{color:var(--personal)}.biz .amt{color:var(--biz)}
-.side .sub{margin-top:12px;display:flex;gap:18px;flex-wrap:wrap}
+.side .sub{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:11px 18px}
 .side .sub .k{font-size:10px;color:var(--faint);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase}
-.side .sub .v{font-family:var(--mono);font-weight:600;font-size:14px;display:block;margin-top:1px}
+.side .sub .v{font-family:var(--mono);font-weight:600;font-size:13px;display:block;margin-top:2px;color:var(--ink-2)}
 
 /* ---------- Stat cards ---------- */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
@@ -254,7 +254,7 @@ textarea.inp{resize:vertical;min-height:60px}
 .overview-period .seg{max-width:100%}
 .overview-period{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:14px}.overview-period .eyebrow{margin-right:2px}.overview-period .seg{box-shadow:inset 0 0 0 1px var(--line)}
 .ov-hero{border-radius:18px;box-shadow:var(--shadow)}
-.ov-hero .side{padding:24px 24px 20px}.ov-hero .side .amt{margin-top:6px}.ov-hero .side .sub{margin-top:14px;row-gap:12px}.ov-hero .side .sub>div{min-width:126px}.ov-hero .side .sub .v{margin-top:4px;font-size:15px}
+.ov-hero .side{padding:24px 24px 20px}.ov-hero .side .amt{margin-top:8px}.ov-hero .side .sub .v{margin-top:3px;font-size:13px}
 .reminder{padding:12px 16px;border-radius:16px}.reminder .txt b{font-size:14px}.reminder .txt span{font-size:12px}
 .ov-kpis .stat{border-radius:16px}.ov-kpis-2{grid-template-columns:repeat(2,minmax(0,1fr))}.ov-grid-main,.ov-grid-secondary{gap:16px}.ov-grid-main .card,.ov-grid-secondary .card{border-radius:16px}.ov-grid-main .card-h .fs12,.ov-grid-secondary .card-h .fs12{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em}.forecast-compact .kpi-line{padding:8px 0;border-bottom:1px solid var(--surface-3)}.forecast-compact .kpi-line:last-of-type{border-bottom:none}.forecast-compact .kpi-line span{font-size:12px}.forecast-compact .kpi-line b{font-family:var(--mono);font-size:16px}.forecast-compact .note{display:none}
 .overview-period button{pointer-events:auto}
@@ -271,9 +271,10 @@ textarea.inp{resize:vertical;min-height:60px}
 .kpi-line{display:flex;justify-content:space-between;padding:7px 0;font-size:13px;border-bottom:1px dashed var(--surface-3)}
 .kpi-line:last-child{border-bottom:none}
 .kpi-line b{font-family:var(--mono)}
-.personal-net-worth{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 14px;padding:8px 10px;border-radius:10px;background:var(--personal-bg);color:var(--personal)}
-.personal-net-worth .k{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
-.personal-net-worth .v{font-family:var(--mono);font-size:14px;font-weight:700;white-space:nowrap}
+.personal-net-worth{display:flex;align-items:baseline;gap:7px;margin:8px 0 0;color:var(--muted)}
+.personal-net-worth .k{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.02em}
+.personal-net-worth .v{font-family:var(--mono);font-size:11.5px;font-weight:700;white-space:nowrap;color:var(--ink-2)}
+.personal-net-worth.neg .v{color:var(--liab)}
 .personal-net-worth.neg{background:var(--liab-bg);color:var(--liab)}
 .clickable{cursor:pointer;transition:transform .12s,border-color .12s,background .12s}
 .clickable:hover{border-color:var(--line-strong);transform:translateY(-1px)}
@@ -397,7 +398,7 @@ textarea.inp{resize:vertical;min-height:60px}
 
   /* сплит-баланс компактнее */
   .split .side{padding:18px}
-  .side .amt{font-size:28px}
+  .side .amt{font-size:clamp(26px,8.5vw,36px)}
   .stats{grid-template-columns:1fr 1fr;gap:10px}
   .stat{padding:13px}
   .stat .val{font-size:19px}
